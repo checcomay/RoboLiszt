@@ -53,3 +53,45 @@ def simulate(
         "tau": tau_log,
         "energy": energy_log,
     }
+
+
+def simulate_closed_loop(
+    dynamics: DynamicsModel,
+    controller,
+    q0: np.ndarray,
+    duration: float,
+    dt: float,
+    environment,
+) -> dict[str, np.ndarray]:
+    """Forward simulation with a state-dependent environment (contact).
+
+    ``environment(t, q, qd) -> (external_forces, measurements)`` where ``external_forces`` is the
+    ``{branch: force}`` dict accepted by ``DynamicsModel.acceleration``;
+    ``controller.compute(t, q, qd, measurements) -> tau``.
+    Same semi-implicit Euler scheme as :func:`simulate`.
+    """
+    steps = int(np.ceil(duration / dt))
+    q = dynamics.robot.validate_q(q0).copy()
+    qd = np.zeros(20)
+    t_log = np.zeros(steps + 1)
+    q_log = np.zeros((steps + 1, 20))
+    tau_log = np.zeros((steps + 1, 20))
+    meas_log: dict[str, list] = {}
+    q_log[0] = q
+
+    for k in range(steps):
+        t = k * dt
+        forces, meas = environment(t, q, qd)
+        tau = controller.compute(t, q, qd, meas)
+        qdd = dynamics.acceleration(q, qd, tau, forces)
+        qd = qd + dt * qdd
+        q = q + dt * qd
+        t_log[k + 1] = t + dt
+        q_log[k + 1] = q
+        tau_log[k] = tau
+        for key, val in meas.items():
+            meas_log.setdefault(key, []).append(val)
+
+    out = {"t": t_log, "q": q_log, "tau": tau_log}
+    out.update({k: np.asarray(v) for k, v in meas_log.items()})
+    return out

@@ -8,30 +8,37 @@ robot:
     torque: "N*m"
 
 dh:
-  1:  {a: 0.040, alpha:  90.0, d: 0.000, theta: 0.0}
-  2:  {a: 0.030, alpha:   0.0, d: 0.000, theta: 0.0}
-  3:  {a: 0.035, alpha: -90.0, d: 0.000, theta: 0.0}
-  4:  {a: 0.030, alpha:   0.0, d: 0.000, theta: 0.0}
-  5:  {a: 0.025, alpha:   0.0, d: 0.000, theta: 0.0}
-  6:  {a: 0.015, alpha:   0.0, d: 0.000, theta: 0.0}
+  # --- Wrist ---
+  1:  {a: 0.034, alpha: -90.0, d:  0.000,  theta_offset:   0.0}
+  2:  {a: 0.000, alpha: -90.0, d:  0.000,  theta_offset:   0.0}
 
-  7:  {a: 0.035, alpha: -90.0, d: 0.000, theta: 0.0}
-  8:  {a: 0.030, alpha:   0.0, d: 0.000, theta: 0.0}
-  9:  {a: 0.015, alpha:   0.0, d: 0.000, theta: 0.0}
+  # --- Little ---
+  3:  {a: 0.075, alpha: -90.0, d: -0.016,  theta_offset: -30.0}
+  4:  {a: 0.000, alpha:   0.0, d:  0.000,  theta_offset:  -5.0}
+  5:  {a: 0.035, alpha:   0.0, d: -0.006,  theta_offset:  -5.0}
+  6:  {a: 0.025, alpha:   0.0, d:  0.000,  theta_offset: -12.0}
 
-  10: {a: 0.035, alpha:   0.0, d: 0.000, theta: 0.0}
-  11: {a: 0.030, alpha:   0.0, d: 0.000, theta: 0.0}
-  12: {a: 0.015, alpha:   0.0, d: 0.000, theta: 0.0}
+  # --- Ring ---
+  7:  {a: 0.085, alpha: -90.0, d: -0.018,  theta_offset: -14.0}
+  8:  {a: 0.045, alpha:   0.0, d: -0.004,  theta_offset: -11.0}
+  9:  {a: 0.030, alpha:   0.0, d:  0.000,  theta_offset: -11.0}
 
-  13: {a: 0.035, alpha:   0.0, d: 0.000, theta: 0.0}
-  14: {a: 0.030, alpha:   0.0, d: 0.000, theta: 0.0}
-  15: {a: 0.015, alpha:   0.0, d: 0.000, theta: 0.0}
+  # --- Middle ---
+  10: {a: 0.095, alpha: -90.0, d: -0.021,  theta_offset:   0.0}
+  11: {a: 0.045, alpha:   0.0, d:  0.000,  theta_offset: -11.0}
+  12: {a: 0.035, alpha:   0.0, d:  0.000,  theta_offset: -11.0}
 
-  16: {a: 0.035, alpha: -90.0, d: 0.000, theta: 0.0}
-  17: {a: 0.030, alpha:  90.0, d: 0.000, theta: 0.0}
-  18: {a: 0.025, alpha: -90.0, d: 0.000, theta: 0.0}
-  19: {a: 0.020, alpha:   0.0, d: 0.000, theta: 0.0}
-  20: {a: 0.015, alpha:   0.0, d: 0.000, theta: 0.0}
+  # --- Index ---
+  13: {a: 0.090, alpha: -90.0, d: -0.019,  theta_offset:  13.0}
+  14: {a: 0.045, alpha:   0.0, d:  0.004,  theta_offset: -11.0}
+  15: {a: 0.030, alpha:   0.0, d:  0.000,  theta_offset: -11.0}
+
+  # --- Thumb ---
+  16: {a: 0.046, alpha: -90.0, d: 0.010,  theta_offset:  75.0}
+  17: {a: 0.000, alpha:  90.0, d: 0.000,  theta_offset:   0.0}
+  18: {a: 0.000, alpha: -90.0, d: 0.000,  theta_offset: -50.0}
+  19: {a: 0.040, alpha:  90.0, d: 0.000,  theta_offset:  -3.0}
+  20: {a: 0.030, alpha:  0.0,  d: 0.000,  theta_offset: -15.0}
 
 topology:
   parent:
@@ -66,6 +73,24 @@ topology:
 limits:
   default_min_deg: -90
   default_max_deg: 90
+  # override opzionali per giunto (gradi), es.:  overrides: {4: [-100, 10], 5: [-100, 10]}
+  # flessione realistica delle dita (MCP/PIP/DIP): fino a -110 deg, estensione fino a +30 deg
+  overrides: {
+    4: [-110, 30],
+    5: [-110, 30],
+    6: [-110, 30],
+    8: [-110, 30],
+    9: [-110, 30],
+    11: [-110, 30],
+    12: [-110, 30],
+    14: [-110, 30],
+    15: [-110, 30]
+  }
+
+carriage:                    # base traslante virtuale (task 4): 3 giunti prismatici x,y,z
+  max_speed: 1.0             # m/s
+  max_accel: 12.0            # m/s^2
+  lift_height: 0.035         # m, sollevamento durante il salto
 
 dynamics:
   joint_inertia: 0.01
@@ -81,6 +106,21 @@ piano:
   home_x: 0.0
   home_y: 0.0
   home_z: 0.080
+  # --- aggiunte per i task (frame tastiera: x lungo il tasto, y lungo la tastiera, z verso l'alto) ---
+  key_front_x: 0.090        # x del bordo anteriore dei tasti rispetto alla base della mano
+  press_x_ratio: 0.50       # punto di pressione lungo il tasto (frazione della profondita')
+  press_x_ratios:           # punto di pressione per dito (frazione della profondita'): le dita corte suonano piu' vicino al bordo
+    thumb: 0.10
+    little: 0.15
+    ring: 0.50
+    middle: 0.50
+    index: 0.50
+  home_note: "E4"           # tasto sotto al medio quando la base e' in home_y
+  play_z: 0.050             # quota della base della mano durante l'esecuzione (home_z = quota di riposo)
+  hover_height: 0.020       # quota di 'riposo' delle dita non coinvolte
+  key_stiffness: 300.0      # N/m   (modello di contatto del task 5)
+  key_damping: 5.0          # N*s/m
+  key_stop_stiffness: 8000.0  # N/m  (fondo corsa)
 
 control:
   ik_step: 0.5
@@ -91,6 +131,47 @@ control:
   kd_position: 4.5
   kp_force: 0.8
   force_limit: 15.0
+  ki_position: 40.0         # aggiunta: azione integrale sull'errore di posizione (N/(m*s))
+  ki_force: 3.0             # aggiunta: azione integrale sull'errore di forza
+  kp_posture: 1.0           # aggiunta: rigidezza di postura nel nucleo (N*m/rad)
+  kd_posture: 0.25          # aggiunta: smorzamento di postura (N*m*s/rad)
 
 simulation:
   dt: 0.005
+
+# ---- modello dinamico a corpi rigidi (ipotesi di progetto: sostituire con i dati CAD) ----
+rigid_body:
+  linear_density: 0.25       # kg/m   (falangi come aste uniformi lungo il vettore DH)
+  link_radius: 0.008         # m      (raggio equivalente per i momenti d'inerzia)
+  min_mass: 0.004            # kg     (massa minima dei link a lunghezza nulla: cardani/attuatori)
+  tip_mass: 0.003            # kg     (polpastrello)
+  palm_mass: 0.20            # kg     (palmo, solidale alla terna 2)
+  palm_com: [0.045, 0.0, 0.0]  # m    (baricentro del palmo nella terna 2)
+  palm_size: [0.09, 0.09, 0.025]  # m (dimensioni del parallelepipedo equivalente)
+  viscous_friction: 0.002    # N*m*s/rad
+  gravity: [0.0, 0.0, -9.81]
+
+actuators:                   # ipotesi di progetto per normalizzare l'ellissoide dinamico (|tau_i| <= tau_max_i)
+  tau_max_finger: 0.10       # N*m
+  tau_max_wrist: 1.00        # N*m
+
+# ---- Task 5 riprogettato: controllo nello spazio operativo sul modello a corpi rigidi ridotto ----
+# (ricostruita da data/task5_rigid.json: nello zip consegnato la sezione mancava e scripts/run_task5_rigid.py falliva con KeyError)
+touch_rigid:
+  dt_ctrl: 0.001             # s   passo del controllore (ZOH delle coppie)
+  dt_plant: 0.0005           # s   passo di integrazione dell'impianto
+  wn_xy: 40.0                # rad/s
+  zeta_xy: 1.0
+  wn_z: 40.0                 # rad/s
+  zeta_z: 1.0
+  ki_pos: 0.0                # 0 -> 0.25 wn^3
+  kf: 0.8
+  ki_force: 3.0
+  c_force: 15.0              # N*s/m smorzamento in contatto
+  wn_post: 20.0              # rad/s
+  zeta_post: 1.0
+  f_limit: 15.0              # N
+  contact_threshold: 0.05    # N
+  free_gain: 1.0
+  model_mismatch: 0.15       # errore del 15% sulla compensazione h+g (come nel modello semplificato)
+  tau_max_finger_sensitivity: 0.25   # N*m  limite di coppia delle dita nella variante di sensibilita' (ff)

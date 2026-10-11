@@ -7,7 +7,6 @@ import numpy as np
 @dataclass(frozen=True)
 class DHParameter:
     """Standard DH parameters for one revolute joint."""
-
     a: float
     alpha: float
     d: float

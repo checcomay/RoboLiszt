@@ -33,6 +33,7 @@ def geometric_jacobian(
     robot: HandRobot,
     q: np.ndarray,
     branch: str,
+    T: dict | None = None,
 ) -> np.ndarray:
     """Return a 6x20 geometric Jacobian using joint axes in frame 0.
 
@@ -41,9 +42,10 @@ def geometric_jacobian(
         Jw_i = z_i-1
     """
     q = robot.validate_q(q)
-    T = robot.forward_kinematics(q)
+    if T is None:                      # pass T to avoid recomputing the FK
+        T = robot.forward_kinematics(q)
     endpoint = robot.branches[branch][-1]
-    p_e = T[endpoint][:3, 3]
+    p_e = (T[endpoint] @ robot._T_tip)[:3, 3]      # TCP = fingertip pad, as in end_effectors()
 
     J = np.zeros((6, 20))
 
@@ -56,3 +58,8 @@ def geometric_jacobian(
         J[3:, joint - 1] = z
 
     return J
+
+
+def position_jacobian(robot: HandRobot, q: np.ndarray, branch: str, T: dict | None = None) -> np.ndarray:
+    """Analytic 3x20 Jacobian of the fingertip (TCP) position."""
+    return geometric_jacobian(robot, q, branch, T)[:3]

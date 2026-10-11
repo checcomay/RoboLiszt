@@ -6,6 +6,29 @@ This version reorganizes the project into a `src/` layout and separates
 configuration, mechanical model, kinematics, dynamics, control, task
 planning, visualization, GUI, and I/O.
 
+## Project Structure
+
+```
+config/robot.yaml            parametri (DH, limiti, tastiera, controllo, carrello, corpi rigidi, attuatori)
+src/hand_robot/
+  model/                     dh.py, robot.py                          (invariati)
+  kinematics/                jacobian.py (analitico, sul TCP), ik.py (DLS multi-catena, limiti, vincoli unilaterali),
+                             singularity.py, manipulability.py (ellissoidi di velocita', forza, dinamica)
+  dynamics/                  model.py + simulation.py (modello semplificato, + simulate_closed_loop),
+                             rigid_body.py (Newton-Eulero ricorsivo su albero, M, g, h, energia)
+  piano/keyboard.py          geometria tastiera (solo tasti bianchi)
+  planning/trajectory.py     quintica a minimo jerk
+  control/                   hybrid.py (posizione/forza), statics.py (tau = J^T F)
+  tasks/                     task1_wave ... task5_touch, common.py (Scene)
+  visualization/             figures.py (invariato), task_plots.py
+gazebo/                      generate.py (URDF, mondo SDF, controller yaml), verify_urdf.py (verifica indipendente),
+                             launch/roboliszt.launch.py e nodes/task_runner.py (NON ESEGUITI)
+scripts/run_tasks.py         task -> data/trajectories/*.npz, data/metrics.json, docs/images/tasks
+scripts/run_analysis.py      ellissoidi, dinamica inversa, statica, validazione IK -> data/analysis.json, docs/images/analysis
+tests/test_roboliszt.py      16 test (pytest)
+```
+Ordine: `python scripts/run_tasks.py && python scripts/run_analysis.py && python gazebo/generate.py && python gazebo/verify_urdf.py`
+
 ## Mechanical topology
 
 The model is deliberately **branched**, not a 20-DOF serial chain:
@@ -52,7 +75,7 @@ The common joints J1 and J2 can influence all fingers.
 
 A lightweight simulation model is included:
 $$
-    M(q) qdd + C(q,qd) qd + g(q) = tau + J^T F_ext
+    M(q) \ddot{q} + C(q,\dot{q}) \dot{q} + g(q) = \tau + J^\top F_{\text{ext}}
 $$
 For the current research scaffold, `M`, damping and gravity are configurable
 approximations. Replace them with CAD/identified inertial parameters before
@@ -80,6 +103,8 @@ pytest -q
 python scripts/run_demo.py
 python scripts/run_analysis.py
 python scripts/run_tasks.py
+python scripts/view_workspace.py
+python scripts/view_robot.py
 ```
 
 ## Configuration

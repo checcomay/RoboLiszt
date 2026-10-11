@@ -1,0 +1,40 @@
+controller_manager:
+  ros__parameters:
+    update_rate: 200
+    joint_state_broadcaster:
+      type: joint_state_broadcaster/JointStateBroadcaster
+    hand_controller:
+      type: joint_trajectory_controller/JointTrajectoryController
+
+hand_controller:
+  ros__parameters:
+    joints:
+      - j1
+      - j2
+      - j3
+      - j4
+      - j5
+      - j6
+      - j7
+      - j8
+      - j9
+      - j10
+      - j11
+      - j12
+      - j13
+      - j14
+      - j15
+      - j16
+      - j17
+      - j18
+      - j19
+      - j20
+      - carriage_x
+      - carriage_y
+      - carriage_z
+    command_interfaces: [position]
+    state_interfaces: [position, velocity]
+    allow_partial_joints_goal: false
+    constraints:
+      stopped_velocity_tolerance: 0.1
+      goal_time: 0.5
