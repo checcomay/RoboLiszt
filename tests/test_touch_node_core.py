@@ -49,10 +49,10 @@ def _close_loop(scene, profile, dt_ctrl=1e-3, dt_plant=5e-4, duration=2.2):
 
 def test_key_joint_name_matches_world_file(scene):
     from hand_robot.control.touch_node_core import key_joint_name
-    assert key_joint_name(scene.kb, "C4") == "key_07_joint"
-    assert key_joint_name(scene.kb, "E4") == "key_09_joint"
+    assert key_joint_name(scene.kb, "C4") == "key_60_joint"
+    assert key_joint_name(scene.kb, "E4") == "key_64_joint"
     sdf = (Path(__file__).resolve().parents[1] / "gazebo" / "worlds" / "piano.sdf").read_text()
-    assert 'joint name="key_09_joint"' in sdf
+    assert 'joint name="key_64_joint"' in sdf
 
 
 def test_held_joints_balance_gravity_at_rest(scene):

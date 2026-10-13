@@ -1,0 +1,92 @@
+{
+ "pp_dt1ms": {
+  "F_peak_N": 1.05,
+  "F_rms_error_pct": 4.62,
+  "F_rms_error_contact_pct": 13.99,
+  "max_penetration_mm": 3.49,
+  "saturated_pct": 0.0,
+  "final_z_offset_mm": -0.05,
+  "qd_max_rad_s": 3.08,
+  "contact_losses": 0
+ },
+ "mf_dt1ms": {
+  "F_peak_N": 2.6,
+  "F_rms_error_pct": 3.66,
+  "F_rms_error_contact_pct": 15.41,
+  "max_penetration_mm": 8.02,
+  "saturated_pct": 0.0,
+  "final_z_offset_mm": 0.05,
+  "qd_max_rad_s": 3.11,
+  "contact_losses": 0
+ },
+ "ff_dt1ms": {
+  "F_peak_N": 5.21,
+  "F_rms_error_pct": 1.74,
+  "F_rms_error_contact_pct": 12.43,
+  "max_penetration_mm": 8.34,
+  "saturated_pct": 0.0,
+  "final_z_offset_mm": -0.03,
+  "qd_max_rad_s": 6.71,
+  "contact_losses": 0
+ },
+ "pp_dt2ms": {
+  "F_peak_N": 1.11,
+  "F_rms_error_pct": 4.59,
+  "F_rms_error_contact_pct": 14.74,
+  "max_penetration_mm": 3.49,
+  "saturated_pct": 0.0,
+  "final_z_offset_mm": -0.04,
+  "qd_max_rad_s": 3.09,
+  "contact_losses": 0
+ },
+ "mf_dt2ms": {
+  "F_peak_N": 2.59,
+  "F_rms_error_pct": 1.71,
+  "F_rms_error_contact_pct": 16.58,
+  "max_penetration_mm": 8.02,
+  "saturated_pct": 3.46,
+  "final_z_offset_mm": 0.05,
+  "qd_max_rad_s": 7.64,
+  "contact_losses": 1
+ },
+ "ff_dt2ms": {
+  "F_peak_N": 6.19,
+  "F_rms_error_pct": 18.29,
+  "F_rms_error_contact_pct": 23.68,
+  "max_penetration_mm": 8.35,
+  "saturated_pct": 9.69,
+  "final_z_offset_mm": -0.02,
+  "qd_max_rad_s": 37.21,
+  "contact_losses": 1
+ },
+ "pp_dt5ms": {
+  "F_peak_N": 2.11,
+  "F_rms_error_pct": 92.56,
+  "F_rms_error_contact_pct": 74.95,
+  "max_penetration_mm": 0.53,
+  "saturated_pct": 22.69,
+  "final_z_offset_mm": -0.09,
+  "qd_max_rad_s": 16.8,
+  "contact_losses": 0
+ },
+ "mf_dt5ms": {
+  "F_peak_N": 4.35,
+  "F_rms_error_pct": 26.38,
+  "F_rms_error_contact_pct": 35.99,
+  "max_penetration_mm": 6.69,
+  "saturated_pct": 12.5,
+  "final_z_offset_mm": 0.04,
+  "qd_max_rad_s": 34.87,
+  "contact_losses": 6
+ },
+ "ff_dt5ms": {
+  "F_peak_N": 9.69,
+  "F_rms_error_pct": 71.61,
+  "F_rms_error_contact_pct": 65.18,
+  "max_penetration_mm": 6.47,
+  "saturated_pct": 15.96,
+  "final_z_offset_mm": 0.01,
+  "qd_max_rad_s": 94.67,
+  "contact_losses": 27
+ }
+}

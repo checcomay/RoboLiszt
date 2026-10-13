@@ -175,3 +175,16 @@ touch_rigid:
   free_gain: 1.0
   model_mismatch: 0.15       # errore del 15% sulla compensazione h+g (come nel modello semplificato)
   tau_max_finger_sensitivity: 0.25   # N*m  limite di coppia delle dita nella variante di sensibilita' (ff)
+
+# ---- suono: pressione dei tasti -> nota + intensita' (nodo ROS, script di render offline) ----
+sound:
+  sample_rate: 44100
+  a4: 440.0                  # Hz
+  trigger_depth: 0.0020      # m   discesa del tasto che fa partire la nota (corsa totale 8 mm; il tocco pp arriva a ~3.5 mm)
+  release_depth: 0.0010      # m   risalita sotto cui la nota viene smorzata (isteresi)
+  motion_depth: 0.0003       # m   inizio del movimento: la velocita' e' misurata tra motion_depth e trigger_depth
+  speed_min: 0.015           # m/s velocita' di discesa DEL TASTO (media tra motion_depth e trigger_depth) che vale MIDI velocity 20 (scala log.)
+  speed_max: 0.18            # m/s idem per MIDI velocity 127. Calibrata sui tocchi del Task 5: il tasto scende a ~0.02 / 0.05 / 0.10 m/s (pp/mf/ff),
+                             # molto meno della velocita' d'impatto del dito (0.05/0.12/0.21) perche' il controllore di forza decelera al contatto
+  release_time: 0.08         # s   costante di tempo dello smorzatore alla risalita del tasto
+  master_gain: 0.8

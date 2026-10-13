@@ -1,0 +1,128 @@
+{
+ "task2_press_middle_E4": [
+  {
+   "t_on": 0.512,
+   "note": "E4",
+   "midi": 64,
+   "velocity": 125,
+   "t_off": 0.895
+  }
+ ],
+ "task3_chord_C4E4G4": [
+  {
+   "t_on": 0.512,
+   "note": "E4",
+   "midi": 64,
+   "velocity": 125,
+   "t_off": 0.895
+  },
+  {
+   "t_on": 0.512,
+   "note": "C4",
+   "midi": 60,
+   "velocity": 125,
+   "t_off": 0.895
+  },
+  {
+   "t_on": 0.512,
+   "note": "G4",
+   "midi": 67,
+   "velocity": 125,
+   "t_off": 0.895
+  }
+ ],
+ "task3_chord_C4E4G4_roll": [
+  {
+   "t_on": 0.512,
+   "note": "C4",
+   "midi": 60,
+   "velocity": 125,
+   "t_off": 0.895
+  },
+  {
+   "t_on": 0.552,
+   "note": "E4",
+   "midi": 64,
+   "velocity": 125,
+   "t_off": 0.935
+  },
+  {
+   "t_on": 0.592,
+   "note": "G4",
+   "midi": 67,
+   "velocity": 125,
+   "t_off": 0.975
+  }
+ ],
+ "task4_octave_jump_7": [
+  {
+   "t_on": 0.512,
+   "note": "E4",
+   "midi": 64,
+   "velocity": 125,
+   "t_off": 0.895
+  },
+  {
+   "t_on": 0.512,
+   "note": "C4",
+   "midi": 60,
+   "velocity": 125,
+   "t_off": 0.895
+  },
+  {
+   "t_on": 0.512,
+   "note": "G4",
+   "midi": 67,
+   "velocity": 125,
+   "t_off": 0.895
+  },
+  {
+   "t_on": 2.312,
+   "note": "E5",
+   "midi": 76,
+   "velocity": 125,
+   "t_off": 2.695
+  },
+  {
+   "t_on": 2.312,
+   "note": "C5",
+   "midi": 72,
+   "velocity": 125,
+   "t_off": 2.695
+  },
+  {
+   "t_on": 2.312,
+   "note": "G5",
+   "midi": 79,
+   "velocity": 125,
+   "t_off": 2.695
+  }
+ ],
+ "task5rb_pp": [
+  {
+   "t_on": 0.837,
+   "note": "E4",
+   "midi": 64,
+   "velocity": 38,
+   "t_off": 1.278
+  }
+ ],
+ "task5rb_mf": [
+  {
+   "t_on": 0.437,
+   "note": "E4",
+   "midi": 64,
+   "velocity": 74,
+   "t_off": 0.911
+  }
+ ],
+ "task5rb_ff_tau0.25": [
+  {
+   "t_on": 0.271,
+   "note": "E4",
+   "midi": 64,
+   "velocity": 104,
+   "t_off": 0.735
+  }
+ ]
+}

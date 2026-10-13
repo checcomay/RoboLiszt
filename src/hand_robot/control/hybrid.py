@@ -38,7 +38,8 @@ class HybridTouchController:
 
     def __init__(self, robot, dynamics, config: dict, branch: str, base: np.ndarray, q_ref: np.ndarray,
                  xy_ref: np.ndarray, z_hover: float, z_floor: float, profile: TouchProfile,
-                 model_mismatch: float = 0.15, free_gain: float = 4.0):
+                 model_mismatch: float = 0.15, free_gain: float = 4.0,
+                 xy_gain: float = 20.0, contact_damping: float | None = 20.0):
         c = config["control"]
         self.robot, self.dyn, self.branch = robot, dynamics, branch
         self.base = np.asarray(base, float)
@@ -53,6 +54,8 @@ class HybridTouchController:
         self.kpq, self.kdq = float(c.get("kp_posture", 1.0)), float(c.get("kd_posture", 0.25))
         self.comp = 1.0 - model_mismatch
         self.free_gain = free_gain
+        self.xy_gain = xy_gain                                        # lateral stiffness multiplier (x, y position loop)
+        self.contact_damping = contact_damping                        # N*s/m on the vertical velocity in force mode (default 20; None: kd/2)
         self.cols = np.zeros(20, dtype=bool)                # active joints: wrist (1, 2) + the controlled finger
         for j in [1, 2] + list(robot.branches[branch]):
             self.cols[j - 1] = True
@@ -100,7 +103,8 @@ class HybridTouchController:
         F = np.zeros(3)
         e_xy = self.xy_ref - pos[:2]
         self.ipos[:2] = np.clip(self.ipos[:2] + e_xy * dt, -0.05, 0.05)
-        F[:2] = self.kp * e_xy + self.kip * self.ipos[:2] - self.kd * v[:2]
+        gx = self.xy_gain
+        F[:2] = gx * self.kp * e_xy + self.kip * self.ipos[:2] - np.sqrt(gx) * self.kd * v[:2]
         if self.mode != FORCE:                      # integral action of the z position loop only outside contact
             self.ipos[2] = float(np.clip(self.ipos[2] + (self.z_ref - pos[2]) * dt, -0.05, 0.05))
         else:
@@ -109,7 +113,8 @@ class HybridTouchController:
             err = F_des - Fz
             self.integ = float(np.clip(self.integ + err * dt, -3.0, 3.0))
             f_down = np.clip(F_des + self.kf * err + self.ki * self.integ, -self.f_limit, self.f_limit)
-            F[2] = -f_down - 0.5 * self.kd * v[2]                  # extra damping of the finger motion
+            dz = 0.5 * self.kd if self.contact_damping is None else self.contact_damping
+            F[2] = -f_down - dz * v[2]                             # damping of the finger motion in contact
         else:
             g = self.free_gain                              # stiffer vertical loop in free space (contact-free)
             F[2] = g * self.kp * (self.z_ref - pos[2]) + self.kip * self.ipos[2] + np.sqrt(g) * self.kd * (vz_ref - v[2])

@@ -29,7 +29,21 @@ class KeyContactEnv:
         p = (T[r.branches[self.branch][-1]] @ r._T_tip)[:3, 3] + self.base
         v = position_jacobian(r, q, self.branch, T) @ qd
         Fn = self.s.kb.contact_force(p[2], v[2])
-        return {self.branch: np.array([0.0, 0.0, Fn])}, {"Fz": Fn, "z": p[2], "vz": v[2]}
+        return {self.branch: np.array([0.0, 0.0, Fn])}, {"Fz": Fn, "z": p[2], "vz": v[2], "x": p[0], "y": p[1]}
+
+
+def start_posture(scene: Scene, finger: str = "middle") -> np.ndarray:
+    """Posture the touching finger starts from: the press posture of task 2 (wrist already pitched, neighbours above
+    the keys), with the finger raised to the safe height above its key and everything else frozen."""
+    notes = DEFAULT_NOTES
+    note, branch = notes[finger], FINGERS[finger]
+    base, kb = scene.base_home, scene.kb
+    q_ready = scene.ready_posture(notes)
+    qs, phase = scene.press_sequence(notes, (finger,), q_ready, base, wrist_weight=10.0)
+    q_hold = qs[[i for i, p in enumerate(phase) if p == "hold"][0]]
+    fj = scene.robot.branches[branch]
+    return scene.solve_robust({branch: kb.hover_point(note, kb.safe_height, finger)}, q_hold, base,
+                              locked=tuple(j for j in range(1, 21) if j not in fj)).q
 
 
 def _metrics(res_sim, ctrl, prof, kb, dt) -> dict:
@@ -64,14 +78,7 @@ def run(scene: Scene, finger: str = "middle", profiles=None, duration: float = 2
     kb = scene.kb
     dyn = DynamicsModel(scene.robot, scene.config)
 
-    q_ready = scene.ready_posture(notes)
-    # Posture of the hand while the key is pressed (wrist pitched, neighbours kept above the keys): taken from
-    # the IK of task 2. The controlled finger then starts from the safe height above its key with the wrist frozen.
-    qs, phase = scene.press_sequence(notes, (finger,), q_ready, base, wrist_weight=10.0)
-    q_hold = qs[[i for i, p in enumerate(phase) if p == "hold"][0]]
-    fj = scene.robot.branches[branch]
-    q_start = scene.solve_robust({branch: kb.hover_point(note, kb.safe_height, finger)}, q_hold, base,
-                                 locked=tuple(j for j in range(1, 21) if j not in fj)).q
+    q_start = start_posture(scene, finger)
     out = []
     for prof in (profiles or PROFILES):
         env = KeyContactEnv(scene, branch, base)

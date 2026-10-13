@@ -18,7 +18,7 @@ src/hand_robot/
                              rigid_body.py (Newton-Eulero ricorsivo su albero, M, g, h, energia)
   piano/keyboard.py          geometria tastiera (solo tasti bianchi)
   planning/trajectory.py     quintica a minimo jerk
-  control/                   hybrid.py (posizione/forza), statics.py (tau = J^T F)
+  control/                   hybrid.py (posizione/forza; xy_gain, contact_damping), operational.py (PD giunti, spazio operativo/impedenza), statics.py (tau = J^T F)
   tasks/                     task1_wave ... task5_touch, common.py (Scene)
   visualization/             figures.py (invariato), task_plots.py
 gazebo/                      generate.py (URDF, mondo SDF, controller yaml), verify_urdf.py (verifica indipendente),

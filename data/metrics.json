@@ -1,0 +1,142 @@
+{
+  "task1_wave": {
+    "duration_s": 4.0,
+    "max_joint_speed_rad_s": 4.110813319058473,
+    "min_joint_margin_deg": 17.999999999999996,
+    "max_tip_height_mm": 221.77975379972537,
+    "middle_tip_lateral_sweep_mm": 127.91858309089899,
+    "sigma_min_min": 0.010573395511154373
+  },
+  "task2_press_thumb_C4": {
+    "duration_s": 1.45,
+    "max_joint_speed_rad_s": 2.347802482872685,
+    "min_joint_margin_deg": 41.79567725131849,
+    "sigma_min_min": 0.035125033205300214,
+    "press_error_mm": 0.06866286430070008,
+    "min_hover_clearance_mm": 16.703783421798956,
+    "wrist_deviation_deg": 1.542402108231275
+  },
+  "task2_press_index_D4": {
+    "duration_s": 1.45,
+    "max_joint_speed_rad_s": 5.600907294424539,
+    "min_joint_margin_deg": 35.55389038563295,
+    "sigma_min_min": 0.05846372258991832,
+    "press_error_mm": 0.07030759770983645,
+    "min_hover_clearance_mm": 7.902399676493227,
+    "wrist_deviation_deg": 13.580736385920666
+  },
+  "task2_press_middle_E4": {
+    "duration_s": 1.45,
+    "max_joint_speed_rad_s": 3.828750664320879,
+    "min_joint_margin_deg": 42.84013616112976,
+    "sigma_min_min": 0.0683516074012402,
+    "press_error_mm": 0.06768870686708196,
+    "min_hover_clearance_mm": 7.911329992300153,
+    "wrist_deviation_deg": 11.703609407778455
+  },
+  "task2_press_ring_F4": {
+    "duration_s": 1.45,
+    "max_joint_speed_rad_s": 5.994238334227031,
+    "min_joint_margin_deg": 32.99175927518127,
+    "sigma_min_min": 0.053064827386161355,
+    "press_error_mm": 0.07220459603819633,
+    "min_hover_clearance_mm": 7.9025899250737135,
+    "wrist_deviation_deg": 14.392299868827024
+  },
+  "task2_press_little_G4": {
+    "duration_s": 1.45,
+    "max_joint_speed_rad_s": 8.075296577733958,
+    "min_joint_margin_deg": 38.97903906354196,
+    "sigma_min_min": 0.05367096341602707,
+    "press_error_mm": 0.080238257992125,
+    "min_hover_clearance_mm": 7.90253693294582,
+    "wrist_deviation_deg": 15.966872645051692
+  },
+  "task3_chord_C4E4G4": {
+    "duration_s": 1.45,
+    "max_joint_speed_rad_s": 5.9072228393295285,
+    "min_joint_margin_deg": 38.512214535243096,
+    "sigma_min_min": 0.03753405590760555,
+    "press_error_mm": 0.07719396544078548,
+    "min_hover_clearance_mm": 7.900456580787293,
+    "wrist_deviation_deg": 16.468844405448404
+  },
+  "task3_chord_C4E4G4_roll": {
+    "duration_s": 1.53,
+    "max_joint_speed_rad_s": 6.39742831427883,
+    "min_joint_margin_deg": 38.39079173971804,
+    "sigma_min_min": 0.037241482939695654,
+    "press_error_mm": 0.07656387338190902,
+    "min_hover_clearance_mm": 7.901898658085334,
+    "wrist_deviation_deg": 16.545177441194138
+  },
+  "task3_chord_C4E4G4_wrist_assist": {
+    "duration_s": 1.45,
+    "max_joint_speed_rad_s": 4.340400458174187,
+    "min_joint_margin_deg": 46.38102867189801,
+    "sigma_min_min": 0.03771515391070603,
+    "press_error_mm": 0.07171949243598472,
+    "min_hover_clearance_mm": -18.54076604775852,
+    "wrist_deviation_deg": 17.618356564020175
+  },
+  "task3_chord_C4D4E4F4G4": {
+    "duration_s": 1.45,
+    "max_joint_speed_rad_s": 5.163913517140061,
+    "min_joint_margin_deg": 46.00022336985723,
+    "sigma_min_min": 0.03767880251257569,
+    "press_error_mm": 0.08099395010489704,
+    "wrist_deviation_deg": 16.112853844510013
+  },
+  "task4_octave_jump_7": {
+    "duration_s": 3.25,
+    "max_joint_speed_rad_s": 5.9072228393295285,
+    "min_joint_margin_deg": 38.51045165216101,
+    "sigma_min_min": 0.03751252433642034,
+    "jump_distance_mm": 164.5,
+    "jump_time_s": 0.35,
+    "carriage_peak_speed_m_s": 0.8807705256143272,
+    "carriage_peak_accel_m_s2": 7.958598048453111,
+    "landing_error_mm": 0.2800285976885603,
+    "min_tip_height_in_flight_mm": 20.09893975585919,
+    "wrist_only_max_reachable_steps": 3
+  },
+  "task5_touch_pp": {
+    "duration_s": 2.6,
+    "v_impact_m_s": 0.05089304807764433,
+    "F_peak_N": 1.2163763606872713,
+    "overshoot_pct": 21.63763606872713,
+    "F_steady_N": 1.0422194110370278,
+    "steady_error_pct": 4.221941103702775,
+    "F_rms_error_pct": 4.381576547261928,
+    "rise_time_90_ms": 155.0,
+    "max_penetration_mm": 3.930399357808298,
+    "key_bottomed": false,
+    "contact_time_s": 0.67
+  },
+  "task5_touch_mf": {
+    "duration_s": 2.6,
+    "v_impact_m_s": 0.1309812935765407,
+    "F_peak_N": 6.332344851045811,
+    "overshoot_pct": 153.29379404183243,
+    "F_steady_N": 2.546289566103156,
+    "steady_error_pct": 1.8515826441262462,
+    "F_rms_error_pct": 15.012578052567964,
+    "rise_time_90_ms": 115.0,
+    "max_penetration_mm": 8.452565051767607,
+    "key_bottomed": true,
+    "contact_time_s": 0.35000000000000003
+  },
+  "task5_touch_ff": {
+    "duration_s": 2.6,
+    "v_impact_m_s": 0.2656710483893374,
+    "F_peak_N": 13.933399280550383,
+    "overshoot_pct": 178.66798561100765,
+    "F_steady_N": 5.0922660589111945,
+    "steady_error_pct": 1.845321178223891,
+    "F_rms_error_pct": 23.29513190277047,
+    "rise_time_90_ms": 55.0,
+    "max_penetration_mm": 9.339174380085261,
+    "key_bottomed": true,
+    "contact_time_s": 0.23500000000000001
+  }
+}

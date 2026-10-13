@@ -84,3 +84,67 @@ def test_task4_octave(scene):
 def test_task5_force_tracking(scene):
     for r in task5_touch.run(scene):
         assert r.metrics["steady_error_pct"] < 10      # mean force; the RMS error is larger for mf/ff (bouncing on the key stop)
+
+
+# ---------------------------------------------------------------- dynamics, statics, URDF
+def test_rigid_body_gravity_is_potential_gradient(scene):
+    from hand_robot.dynamics.rigid_body import RigidBodyDynamics
+    d = RigidBodyDynamics(scene.robot, scene.config)
+    q = np.random.default_rng(5).uniform(-0.6, 0.6, 20)
+    g_fd = np.array([(d.potential_energy(q + 1e-6 * e) - d.potential_energy(q - 1e-6 * e)) / 2e-6 for e in np.eye(20)])
+    assert np.abs(g_fd - d.gravity_torque(q)).max() < 1e-8
+    M = d.mass_matrix(q)
+    assert np.abs(M - M.T).max() < 1e-12 and np.linalg.eigvalsh(M).min() > 0
+
+
+def test_virtual_work_duality(scene):
+    from hand_robot.control.statics import joint_torque_from_tip_force
+    q = np.random.default_rng(6).uniform(-0.6, 0.6, 20)
+    qd = np.random.default_rng(7).uniform(-1, 1, 20)
+    F = np.array([0.3, -0.2, 1.5])
+    v = position_jacobian(scene.robot, q, "finger_3") @ qd
+    assert abs(joint_torque_from_tip_force(scene.robot, q, "finger_3", F) @ qd - F @ v) < 1e-12
+
+
+def test_urdf_matches_dh_model():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("verify_urdf", Path(__file__).resolve().parents[1] / "gazebo" / "verify_urdf.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert mod.main()
+
+
+# ------------------------------------------------------------------------------- control study
+def _study():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("run_control_study", Path(__file__).resolve().parents[1] / "scripts" / "run_control_study.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod, mod.Study()
+
+
+def test_contact_aware_impedance_reduces_impact_vs_stiff_position():
+    mod, S = _study()
+    Fd = 2.5
+    d_eq = (Fd + S.kb.k_stop * S.kb.press_depth) / (S.kb.k_key + S.kb.k_stop)
+    pos = S.os_controller(S.descend_ref(-(d_eq + Fd / 1000), 0.25), [1000] * 3, zeta=1.0)
+    imp = S.os_controller(S.descend_ref(-(d_eq + Fd / 100), 0.25), [100] * 3, zeta=1.0, k_env=S.kb.k_key,
+                          zero_vref_on_contact=True)
+    Fp = mod.simulate_closed_loop(S.dyn, pos, S.q0, 2.4, S.dt, S.env(0.0))["Fz"].max()
+    Fi = mod.simulate_closed_loop(S.dyn, imp, S.q0, 2.4, S.dt, S.env(0.0))["Fz"].max()
+    assert Fi < 0.5 * Fp
+
+
+def test_hybrid_keeps_force_and_lateral_position():
+    from hand_robot.control.hybrid import TouchProfile
+    mod, S = _study()
+    prof = TouchProfile("x", 0.12, 2.5, 0.12, t_hold=1.2, t_release=0.15)
+    res = {}
+    for dz in (-0.002, 0.002):
+        c = mod.HybridTouchController(S.sc.robot, S.dyn, S.sc.config, mod.BRANCH, S.base, S.q0, xy_ref=S.xy,
+                                      z_hover=0.03, z_floor=-0.010, profile=prof, model_mismatch=0.15)
+        o = mod.simulate_closed_loop(S.dyn, c, S.q0, 2.4, S.dt, S.env(dz))
+        w = mod.plateau_window(c.log["F_des"], 2.5, S.dt)
+        res[dz] = (o["Fz"][w].mean(), np.hypot(o["x"] - S.xy[0], o["y"] - S.xy[1]).max())
+    assert abs(res[-0.002][0] - res[0.002][0]) < 0.1          # force insensitive to a +-2 mm key-height error
+    assert max(r[1] for r in res.values()) < 0.005            # lateral error below 5 mm
