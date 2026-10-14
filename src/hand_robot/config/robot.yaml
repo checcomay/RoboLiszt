@@ -122,6 +122,13 @@ piano:
   key_damping: 5.0          # N*s/m
   key_stop_stiffness: 8000.0  # N/m  (fondo corsa)
 
+  # --- tasti neri e carrozzeria: solo mondo Gazebo e suono (i task suonano solo tasti bianchi) ---
+  black_key_width: 0.0137   # m
+  black_key_length: 0.060   # m  ridotta (reale ~0.095): i task premono i bianchi a x=0.165, i neri partono da x=0.18 cosi' i polpastrelli non li toccano
+  black_key_height: 0.010   # m  altezza della faccia superiore dei neri sopra i bianchi
+  world_range: ["C3", "C6"] # estremi della tastiera nel mondo (22 bianchi + 15 neri)
+  tip_collision_radius: 0.0055   # m  sfera di collisione del polpastrello (centro a TCP - r lungo x: la superficie arriva al TCP)
+
 control:
   ik_step: 0.5
   ik_tolerance: 1.0e-4
