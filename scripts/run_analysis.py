@@ -77,8 +77,8 @@ def main():
     d, ph = load("task2_press_middle_E4")
     fig = plt.figure(figsize=(13, 4.4))
     scale = {"vel": 0.25, "force": 0.0022, "acc": 0.00005}
-    titles = {"vel": "velocity ellipsoid\n(|q̇|≤1, scale 0.25 m per m/s)", "force": "force ellipsoid\n(|τ|≤1 N·m, scale 2.2 mm per N)",
-              "acc": "dynamic (acceleration) ellipsoid\n(|τ_i/τ_max,i|≤1, scale 0.05 mm per m/s²)"}
+    titles = {"vel": "ellissoide di velocità\n(|q̇|≤1, scala 0,25 m per m/s)", "force": "ellissoide di forza\n(|τ|≤1 N·m, scala 2,2 mm per N)",
+              "acc": "ellissoide dinamico (accelerazione)\n(|τ_i/τ_max,i|≤1, scala 0,05 mm per m/s²)"}
     for pi, kind in enumerate(("vel", "force", "acc")):
         ax = fig.add_subplot(1, 3, pi + 1, projection="3d")
         for tag, k, col in (("hover", 0, "tab:blue"), ("pressed", ph.index("hold"), "tab:red")):
@@ -102,7 +102,7 @@ def main():
         ax.set_title(titles[kind], fontsize=9)
         ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_zlabel("z")
         ax.set_box_aspect([1, 1, 1]); ax.view_init(elev=22, azim=-55)
-    fig.suptitle("Middle finger: hover (blue) and bottom of the stroke (red); black arrow = weakest principal direction", fontsize=10)
+    fig.suptitle("Dito medio: a riposo (blu) e a fondo corsa (rosso); freccia nera = direzione principale più debole", fontsize=10)
     fig.tight_layout()
     fm.save(fig, "ellipsoids_middle", "analysis")
 
@@ -110,14 +110,14 @@ def main():
     fig, ax = plt.subplots(1, 3, figsize=(12, 3.6))
     names = list(NOTE)
     x = np.arange(len(names)); wd = 0.38
-    for a, (key, lab, unit) in zip(ax, (("v_z", "max vertical speed", "m/s per (rad/s)"), ("f_z", "max vertical force", "N per (N·m)"))):
-        a.bar(x - wd / 2, [ell[f]["hover_wrist"][key] for f in names], wd, label="hover")
-        a.bar(x + wd / 2, [ell[f]["pressed_wrist"][key] for f in names], wd, label="pressed")
+    for a, (key, lab, unit) in zip(ax, (("v_z", "massima velocità verticale", "m/s per (rad/s)"), ("f_z", "massima forza verticale", "N per (N·m)"))):
+        a.bar(x - wd / 2, [ell[f]["hover_wrist"][key] for f in names], wd, label="a riposo")
+        a.bar(x + wd / 2, [ell[f]["pressed_wrist"][key] for f in names], wd, label="a fondo corsa")
         a.set_xticks(x); a.set_xticklabels(names, fontsize=8); a.set_ylabel(unit); a.set_title(lab, fontsize=9)
     ax[0].legend(fontsize=8)
     ax[2].bar(x - wd / 2, [ell[f]["hover_dyn"]["a_z"] for f in names], wd)
     ax[2].bar(x + wd / 2, [ell[f]["pressed_dyn"]["a_z"] for f in names], wd)
-    ax[2].set_xticks(x); ax[2].set_xticklabels(names, fontsize=8); ax[2].set_ylabel("m/s² (|τ/τmax|≤1)"); ax[2].set_title("max vertical acceleration", fontsize=9)
+    ax[2].set_xticks(x); ax[2].set_xticklabels(names, fontsize=8); ax[2].set_ylabel("m/s² (|τ/τmax|≤1)"); ax[2].set_title("massima accelerazione verticale", fontsize=9)
     fig.tight_layout()
     fm.save(fig, "vertical_transmission", "analysis")
 
@@ -162,12 +162,12 @@ def main():
     d, ph, dt, comp, _ = ids["task3_triad"][:5]
     t = d["t"]
     fig, axs = plt.subplots(1, 3, figsize=(13, 3.8))
-    for ax, j, ttl in ((axs[0], 2, "wrist pitch  J2"), (axs[1], 11, "middle  J11"), (axs[2], 5, "little  J5")):
+    for ax, j, ttl in ((axs[0], 2, "flessione polso  J2"), (axs[1], 11, "medio  J11"), (axs[2], 5, "mignolo  J5")):
         for c, ls in (("total", "-"), ("inertial", "--"), ("coriolis", ":"), ("gravity", "-.")):
-            ax.plot(t, 1e3 * comp[c][:, j - 1], ls, label=c)
-        ax.set_title(ttl, fontsize=9); ax.set_xlabel("time [s]"); ax.set_ylabel("torque [mN·m]")
+            ax.plot(t, 1e3 * comp[c][:, j - 1], ls, label={'total': 'totale', 'inertial': 'inerziale', 'coriolis': 'Coriolis', 'gravity': 'gravità', 'friction': 'attrito'}[c])
+        ax.set_title(ttl, fontsize=9); ax.set_xlabel("tempo [s]"); ax.set_ylabel("coppia [mN·m]")
     axs[0].legend(fontsize=7)
-    fig.suptitle("Task 3 (triad): inverse dynamics, torque components", fontsize=10)
+    fig.suptitle("Task 3 (triade): dinamica inversa, componenti della coppia", fontsize=10)
     fig.tight_layout()
     fm.save(fig, "id_task3", "analysis")
 
@@ -176,38 +176,39 @@ def main():
     fig, axs = plt.subplots(1, 2, figsize=(10, 3.8))
     for i, lab in enumerate("xyz"):
         axs[0].plot(t, fb[:, i], label=f"F{lab}")
-    axs[0].set_xlabel("time [s]"); axs[0].set_ylabel("force on the hand [N]"); axs[0].set_title("carriage force", fontsize=9); axs[0].legend(fontsize=8)
-    axs[1].plot(t, 1e3 * comp["total"][:, 1], label="J2 total")
-    axs[1].plot(t, 1e3 * comp["inertial"][:, 1], "--", label="J2 inertial")
-    axs[1].plot(t, 1e3 * comp["gravity"][:, 1], "-.", label="J2 gravity")
-    axs[1].set_xlabel("time [s]"); axs[1].set_ylabel("mN·m"); axs[1].legend(fontsize=8); axs[1].set_title("wrist pitch", fontsize=9)
-    fig.suptitle("Task 4 (octave jump): inverse dynamics with base acceleration", fontsize=10)
+    axs[0].set_xlabel("tempo [s]"); axs[0].set_ylabel("forza sulla mano [N]"); axs[0].set_title("forza del carrello", fontsize=9); axs[0].legend(fontsize=8)
+    axs[1].plot(t, 1e3 * comp["total"][:, 1], label="J2 totale")
+    axs[1].plot(t, 1e3 * comp["inertial"][:, 1], "--", label="J2 inerziale")
+    axs[1].plot(t, 1e3 * comp["gravity"][:, 1], "-.", label="J2 gravità")
+    axs[1].set_xlabel("tempo [s]"); axs[1].set_ylabel("mN·m"); axs[1].legend(fontsize=8); axs[1].set_title("flessione del polso", fontsize=9)
+    fig.suptitle("Task 4 (salto d'ottava): dinamica inversa con accelerazione della base", fontsize=10)
     fig.tight_layout()
     fm.save(fig, "id_task4", "analysis")
 
     # ------------------------------------------------------------------ kineto-statics (5.3)
+    # contact forces and postures from the UNIFIED-dynamics Task 5 (rigid-body, scripts/run_task5_rigid.py); the ff touch is the
+    # run with the raised finger torque limit (0.25 N*m), because with the nominal 0.1 N*m the actuator saturates (see task5_rigid.json)
     stat = {}
     fig, axs = plt.subplots(2, 3, figsize=(13, 6), sharex="col")
-    for col, prof in enumerate(("pp", "mf", "ff")):
-        d, ph = load(f"task5_touch_{prof}")
-        q, Fz = d["q"][:-1], d["x_Fz"]
-        t = d["t"][:-1]
-        act = [j - 1 for j in active_joints(rb, "finger_3")]
+    act = [j - 1 for j in active_joints(rb, "finger_3")]
+    for col, (prof, fname) in enumerate((("pp", "task5rb_pp"), ("mf", "task5rb_mf"), ("ff", "task5rb_ff_tau0.25"))):
+        d, ph = load(fname)
+        sl = slice(0, None, 5)
+        q, Fz, t = d["q"][sl], d["x_Fz"][sl], d["t"][sl]
         tc = np.array([compensation_torque(rb, q[k], "finger_3", [0, 0, Fz[k]]) for k in range(len(q))])
-        tg = np.array([rbd.gravity_torque(q[k]) for k in range(0, len(q), 10)])
-        axs[0, col].plot(t, Fz, "k"); axs[0, col].set_title(f"touch {prof}"); axs[0, col].set_ylabel("contact force [N]" if col == 0 else "")
+        tg = np.array([rbd.gravity_torque(q[k]) for k in range(0, len(q), 20)])
+        axs[0, col].plot(t, Fz, "k"); axs[0, col].set_title(f"tocco {prof}"); axs[0, col].set_ylabel("forza di contatto [N]" if col == 0 else "")
         for j in act:
             axs[1, col].plot(t, 1e3 * tc[:, j], label=f"J{j+1}")
-        axs[1, col].set_xlabel("time [s]"); axs[1, col].set_ylabel("compensation torque [mN·m]" if col == 0 else "")
+        axs[1, col].set_xlabel("tempo [s]"); axs[1, col].set_ylabel("coppia di compensazione [mN·m]" if col == 0 else "")
         kpk = int(np.argmax(Fz))
-        hold = slice(int(np.argmax(Fz > 0.05)) + 40, int(np.argmax(Fz > 0.05)) + 60)
         peak = np.abs(tc).max(0)
-        stat[prof] = {"peak_force_N": float(Fz.max()),
+        stat[prof] = {"source": fname, "peak_force_N": float(Fz.max()),
                       "peak_comp_torque_mNm": {f"J{j+1}": float(1e3 * peak[j]) for j in act},
                       "wrist_pitch_share_pct_of_norm": float(100 * np.abs(tc[kpk, 1]) / np.linalg.norm(tc[kpk, act])),
                       "max_gravity_torque_active_mNm": float(1e3 * np.abs(tg[:, act]).max())}
     axs[1, 0].legend(fontsize=7, ncol=2)
-    fig.suptitle("Kineto-statics of the key contact: τ = −Jᵀ F  (active joints: J1, J2 and the middle finger J10–J12)", fontsize=10)
+    fig.suptitle("Cineto-statica del contatto con il tasto: τ = −Jᵀ F  (giunti attivi: J1, J2 e J10–J12 del medio)", fontsize=10)
     fig.tight_layout()
     fm.save(fig, "statics_touch", "analysis")
     out["statics"] = stat

@@ -1,0 +1,37 @@
+\begin{thebibliography}{1}
+
+\bibitem{robopianist2023}
+Kevin Zakka, Philipp Wu, Laura Smith, Nimrod Gileadi, Taylor Howell, Xue~Bin
+  Peng, Sumeet Singh, Yuval Tassa, Pete Florence, Andy Zeng, and Pieter Abbeel.
+\newblock Robopianist: Dexterous piano playing with deep reinforcement
+  learning.
+\newblock In {\em Conference on Robot Learning (CoRL)}, 2023.
+\newblock \blue{\url{https://kzakka.com/robopianist/}}.
+
+\bibitem{usc_pianohand_2026}
+{USC Viterbi School of Engineering}.
+\newblock A robot hand that taught itself to play piano could change the future
+  of machines, 5 2026.
+\newblock
+  \href{https://viterbischool.usc.edu/news/2026/05/a-robot-hand-that-taught-itself-to-play-piano-could-change-the-future-of-machines/}{\blue{\texttt{https://viterbischool.usc.edu}}}.
+
+\bibitem{athletic_tasks_2025}
+Le~Chen, Yi~Zhao, Jan Schneider, Quankai Gao, Simon Guist, and Cheng Qian.
+\newblock Dexterous robotic piano playing at scale.
+\newblock {\em arXiv preprint arXiv:2511.02504}, 2025.
+\newblock \blue{\url{https://arxiv.org/abs/2511.02504}}.
+
+\bibitem{perception_action_2025}
+Hesam Azadjou, Ali Marjaninejad, and Francisco~J. Valero-Cuevas.
+\newblock Perception in action: a robotic system that can teach itself to
+  melodiously play music by ear.
+\newblock {\em Journal of the Royal Society Interface}, 23(238):20250909, 5
+  2026.
+\newblock \blue{\url{https://doi.org/10.1098/rsif.2025.0909}}.
+
+\bibitem{pianobot_lin}
+Xiaowei Lin.
+\newblock Pianobot: A robotic piano player system, 2024.
+\newblock \blue{\url{https://github.com/XiaoweiLinXL/Pianobot}}.
+
+\end{thebibliography}

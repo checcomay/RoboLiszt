@@ -385,40 +385,43 @@
   },
   "statics": {
     "pp": {
-      "peak_force_N": 1.2163763606872713,
+      "source": "task5rb_pp",
+      "peak_force_N": 1.0442220547174417,
       "peak_comp_torque_mNm": {
         "J1": 0.0,
-        "J2": 168.24717803434373,
-        "J10": 1.790623090122454,
-        "J11": 50.42910173918532,
-        "J12": 4.173830812718439
+        "J2": 136.55799086159988,
+        "J10": 0.4459919007691215,
+        "J11": 38.81469441706433,
+        "J12": 1.9004119282002097
       },
-      "wrist_pitch_share_pct_of_norm": 95.75906745414146,
-      "max_gravity_torque_active_mNm": 221.54808654955724
+      "wrist_pitch_share_pct_of_norm": 96.18826927543097,
+      "max_gravity_torque_active_mNm": 220.5368561936698
     },
     "mf": {
-      "peak_force_N": 6.332344851045811,
+      "source": "task5rb_mf",
+      "peak_force_N": 2.599199204267621,
       "peak_comp_torque_mNm": {
         "J1": 0.0,
-        "J2": 821.9255071859706,
-        "J10": 10.398491274191421,
-        "J11": 208.02358197965796,
-        "J12": 72.67096445854989
+        "J2": 341.06152875956025,
+        "J10": 0.8627436000537078,
+        "J11": 96.328418851403,
+        "J12": 4.738905500555968
       },
-      "wrist_pitch_share_pct_of_norm": 96.58192066680522,
-      "max_gravity_torque_active_mNm": 222.0726929668435
+      "wrist_pitch_share_pct_of_norm": 96.24813626474462,
+      "max_gravity_torque_active_mNm": 220.5040802609928
     },
     "ff": {
-      "peak_force_N": 13.933399280550383,
+      "source": "task5rb_ff_tau0.25",
+      "peak_force_N": 5.174112959503184,
       "peak_comp_torque_mNm": {
         "J1": 0.0,
-        "J2": 1702.1753687835967,
-        "J10": 23.013120408609524,
-        "J11": 351.4295546583247,
-        "J12": 258.6922736482919
+        "J2": 673.8209747913785,
+        "J10": 1.5694917450343457,
+        "J11": 191.63826772010526,
+        "J12": 11.23886318653269
       },
-      "wrist_pitch_share_pct_of_norm": 96.85915878502792,
-      "max_gravity_torque_active_mNm": 222.15877505029164
+      "wrist_pitch_share_pct_of_norm": 96.45491220952385,
+      "max_gravity_torque_active_mNm": 220.45458236369822
     }
   },
   "tracking_error": {
@@ -445,7 +448,7 @@
     "trials": 100,
     "success": 100,
     "mean_iterations": 19.19,
-    "mean_time_ms": 11.647863388061523,
+    "mean_time_ms": 11.646890640258789,
     "max_iterations_setting": 600
   }
 }

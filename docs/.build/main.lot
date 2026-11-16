@@ -1,0 +1,33 @@
+\babel@toc {italian}{}\relax 
+\babel@toc {italian}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {2.1}{\ignorespaces Parametri DH della catena $J_3$--$J_6$.}}{13}{table.2.1}%
+\contentsline {table}{\numberline {2.2}{\ignorespaces Parametri DH della catena $J_7$--$J_9$.}}{14}{table.2.2}%
+\contentsline {table}{\numberline {2.3}{\ignorespaces Parametri DH della catena $J_{10}$--$J_{12}$.}}{14}{table.2.3}%
+\contentsline {table}{\numberline {2.4}{\ignorespaces Parametri DH della catena $J_{13}$--$J_{15}$.}}{14}{table.2.4}%
+\contentsline {table}{\numberline {2.5}{\ignorespaces Parametri DH della catena $J_{16}$--$J_{20}$.}}{15}{table.2.5}%
+\contentsline {table}{\numberline {2.6}{\ignorespaces Indici di manipolabilità nella configurazione di fondo corsa (tasti C4--G4, Task~2). $\sigma _i$ in m/s per rad/s (valori singolari); $w$ in m$^3$/(rad/s)$^3$; $v_z$ massima velocità verticale [m/s per rad/s] ed $f_z$ massima forza verticale [N per N$\cdot $m], dalle~\eqref {eq:vdir}--\eqref {eq:fdir} con $\boldsymbol u=\hat {\boldsymbol z}$.}}{27}{table.2.6}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Parametri del modello a corpi rigidi: sono ipotesi di progetto da sostituire con i dati CAD o con una procedura di identificazione.}}{32}{table.3.1}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Ellissoide di manipolabilità dinamica dei polpastrelli (polso e dito attivi, coppie normalizzate con $\tau _{\max }$ ipotizzati).}}{33}{table.3.2}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Inseguimento in spazio libero del polpastrello del medio (modello a corpi rigidi, compensazione di gravità con errore del $15\%$).}}{37}{table.4.1}%
+\contentsline {table}{\numberline {4.2}{\ignorespaces Effetto del periodo di controllo sul controllo ibrido del tocco (modello a corpi rigidi, limite di coppia del dito $0{,}25$~N$\cdot $m).}}{42}{table.4.2}%
+\contentsline {table}{\numberline {4.3}{\ignorespaces Confronto dei controllori di contatto (forza desiderata $2{,}5$~N; modello a corpi rigidi). Il picco è il massimo della forza durante l'impatto; i valori a regime sono mediati su un intervallo di tenuta senza rilascio.}}{42}{table.4.3}%
+\contentsline {table}{\numberline {4.4}{\ignorespaces Robustezza del controllo ibrido (forza desiderata $2{,}5$~N, $\omega _n=100$~rad/s in $x$--$y$): variazioni dell'errore sul modello di gravità, della rigidezza del tasto e dito diverso da quello di taratura.}}{43}{table.4.4}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Moduli del pacchetto Python.}}{46}{table.5.1}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Coerenza dell'URDF generato con il modello DH e con il modello inerziale (25 configurazioni casuali, carrello compreso).}}{49}{table.5.2}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Parametri geometrici e di compito. Il punto di pressione dipende dal dito: le dita pi\`u corte (pollice, mignolo) suonano pi\`u vicino al bordo anteriore del tasto.}}{50}{table.5.3}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Task 2: pressione di un singolo tasto con ciascun dito. Errore: scostamento del polpastrello dal punto di fondo corsa; la penultima colonna \`e la minima quota dei polpastrelli delle dita che non suonano; $\Delta q_{1,2}$ \`e il massimo scostamento del polso dalla postura iniziale.}}{53}{table.5.4}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces Task 3: varianti dell'accordo. Nel caso senza vincolo unilaterale le dita non coinvolte (indice, anulare) scendono sotto la superficie dei tasti D4 ed F4, premendoli involontariamente. Nel caso a cinque dita non vi sono dita ferme.}}{54}{table.5.5}%
+\contentsline {table}{\numberline {5.6}{\ignorespaces Sintesi dei task cinematici. L'errore di posizione \`e riferito ai polpastrelli che premono; nel Task~4 \`e l'errore di atterraggio dopo il volo. Il valore $\sigma _{\min }$ \`e il minimo, lungo la traiettoria, dei Jacobiani $3\times (2+n_k)$ delle dita coinvolte.}}{56}{table.5.6}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {6.1}{\ignorespaces Errore di inseguimento dei polpastrelli sulla traiettoria completa (1,45~s, 291 campioni).}}{58}{table.6.1}%
+\contentsline {table}{\numberline {6.2}{\ignorespaces Valori RMS delle coppie sui giunti attivi e quota del contributo gravitazionale, $\mathrm {RMS}_g/(\mathrm {RMS}_g+\mathrm {RMS}_i+\mathrm {RMS}_c)$. Il totale è mediato sui giunti attivi; il picco sul singolo giunto è più alto (Tabella~\ref {tab:peaks}).}}{60}{table.6.2}%
+\contentsline {table}{\numberline {6.3}{\ignorespaces Coppie di picco sui giunti del polso e forze del carrello. Il peso statico della mano è $4{,}2$~N.}}{60}{table.6.3}%
+\contentsline {table}{\numberline {6.4}{\ignorespaces Coppie di compensazione ai giunti per il tocco del medio. La coppia gravitazionale massima sui giunti attivi è di circa 221~mN$\cdot $m. $J_1$ è sempre nulla perché la forza è verticale e l'asse di $J_1$ è verticale.}}{61}{table.6.4}%
+\contentsline {table}{\numberline {6.5}{\ignorespaces Prestazioni del controllo ibrido nei tre profili di tocco (modello a corpi rigidi, banda laterale $100$~rad/s). Nella colonna ff nominale il dito satura e il tocco non è valido.}}{62}{table.6.5}%
+\contentsline {table}{\numberline {6.6}{\ignorespaces Protocollo di validazione in Gazebo: i risultati non sono ancora disponibili.}}{64}{table.6.6}%
+\addvspace {10\p@ }

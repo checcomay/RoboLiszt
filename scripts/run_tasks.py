@@ -37,7 +37,8 @@ def main():
     scene = Scene()
     fm = FigureManager(ROOT / "docs" / "images")
     out_dir = ROOT / "data" / "trajectories"
-    report = {}
+    mpath = ROOT / "data" / "metrics.json"
+    report = json.loads(mpath.read_text()) if mpath.exists() else {}      # merge: running a single task keeps the others
 
     def save(res):
         res.save(out_dir / f"{res.name}.npz")

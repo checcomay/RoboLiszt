@@ -1,0 +1,371 @@
+
+\chapter{Controllo del moto e della forza}
+\label{ch:controllo}
+
+Questo capitolo presenta i principi del controllo del moto e della forza applicati al polpastrello di \textit{RoboLiszt} e li confronta con simulazioni. Si parte dalla differenza tra controllare i singoli giunti e controllare direttamente le coordinate $(x,y,z)$ del polpastrello (Sezione~\ref{sec:ctrl_spazi}); si mostra perché un controllo di sola posizione non è adatto quando c'è contatto (Sezione~\ref{sec:ctrl_interazione}); si introduce il controllo di impedenza (Sezione~\ref{sec:ctrl_impedenza}) e infine il controllo ibrido forza/posizione, che è quello adottato per il tocco pianistico (Sezione~\ref{sec:ctrl_ibrido}).
+
+\paragraph{Condizioni delle simulazioni.} Tutti i risultati di questo capitolo provengono da simulazioni in Python con il \emph{modello dinamico a corpi rigidi} del Capitolo~\ref{ch:dynamics}, ridotto ai due giunti del polso e ai giunti del dito che tocca (i restanti giunti restano fermi; la matrice d'inerzia, i termini di velocità e gravità e lo Jacobiano del modello ridotto coincidono con i blocchi corrispondenti del modello completo). L'impianto è integrato a $2$~kHz con il termine viscoso trattato implicitamente e i controllori girano a $1$~kHz. Il contatto col tasto è una molla di $300$~N/m con smorzatore di $5$~N$\cdot$s/m e fondo corsa a $8$~mm con rigidezza di $8000$~N/m. Il dito è il medio sul tasto E4, la compensazione di gravità e attrito è volutamente errata del $15\%$ e i controllori rispettano i limiti di coppia degli attuatori (polso $1$~N$\cdot$m; dito $0{,}25$~N$\cdot$m nelle prove di confronto: con il limite nominale di $0{,}1$~N$\cdot$m il dito non sviluppa forze maggiori di circa $2{,}7$~N, Sezione~\ref{sec:val_controllo}). Inerzie, limiti di coppia e parametri di contatto sono ipotesi di progetto e i controllori non sono stati validati su un sistema fisico né in Gazebo (Sezione~\ref{sec:val_gazebo}).
+
+%=============================================================================================
+\section{Controllo nello spazio dei giunti e nello spazio operativo}
+\label{sec:ctrl_spazi}
+
+\subsection{Controllo nello spazio dei giunti}
+
+Nel controllo nello spazio dei giunti ogni attuatore insegue un riferimento angolare $q_{d,i}(t)$ e il compito (la posizione del polpastrello) è tradotto \emph{in anticipo} in riferimenti articolari mediante la cinematica inversa (Sezione~\ref{sec:inverse_kinematics}). La legge più semplice è un PD con compensazione di gravità (Figura~\ref{fig:blk_joint}):
+\begin{equation}
+    \boldsymbol\tau=\boldsymbol K_P(\boldsymbol q_d-\boldsymbol q)+\boldsymbol K_D(\dot{\boldsymbol q}_d-\dot{\boldsymbol q})+\hat{\boldsymbol g}(\boldsymbol q)
+    \label{eq:ctrl_joint}
+\end{equation}
+Con $\hat{\boldsymbol g}=\boldsymbol g$ e guadagni definiti positivi, la postura $\boldsymbol q_d$ è asintoticamente stabile. Poiché $\delta\boldsymbol p_e=\boldsymbol J_P\,\delta\boldsymbol q$, l'errore del polpastrello è l'errore articolare trasformato dallo Jacobiano: il controllore non \emph{vede} l'errore nello spazio operativo, e l'accuratezza finale dipende dalla qualità del riferimento $\boldsymbol q_d$ (quindi dalla cinematica inversa) e del modello.
+
+\begin{figure}[!ht]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[>=Stealth, node distance=1.5cm and 1.3cm,
+        block/.style={draw, rectangle, minimum height=1.0cm, minimum width=2.1cm, align=center, font=\small},
+        sum/.style={draw, circle, inner sep=1.5pt, font=\small}]
+        \node (xd) {$\boldsymbol p_d(t)$};
+        \node[block, right=of xd] (ik) {Cinematica\\inversa};
+        \node[sum, right=of ik] (s) {$\scriptstyle +$};
+        \node[block, right=of s] (pd) {PD\\$\boldsymbol K_P,\boldsymbol K_D$};
+        \node[sum, right=1.0cm of pd] (s2) {$\scriptstyle +$};
+        \node[block, right=of s2] (rob) {Robot\\$\boldsymbol M\ddot{\boldsymbol q}+\boldsymbol h+\boldsymbol g=\boldsymbol\tau$};
+        \node[block, right=of rob] (fk) {Cinematica\\diretta};
+        \node[right=1.2cm of fk] (p) {$\boldsymbol p_e$};
+        \node[block, below=0.8cm of s2] (gc) {$\hat{\boldsymbol g}(\boldsymbol q)$};
+        \draw[->] (xd) -- (ik); \draw[->] (ik) -- node[above]{$\boldsymbol q_d$} (s);
+        \draw[->] (s) -- node[above]{$\boldsymbol e_q$} (pd); \draw[->] (pd) -- (s2);
+        \draw[->] (s2) -- node[above]{$\boldsymbol\tau$} (rob); \draw[->] (rob) -- node[above]{$\boldsymbol q$} (fk);
+        \draw[->] (fk) -- (p);
+        \draw[->] (gc) -- (s2);
+        \draw[->] ($(rob.east)!0.5!(fk.west)$) |- ($(rob.south)+(0,-1.8cm)$) -| (s.south) node[pos=0.25, below]{$\boldsymbol q,\dot{\boldsymbol q}$};
+        \draw[->] ($(rob.south)+(-0.3cm,0)$) |- (gc.east);
+    \end{tikzpicture}%
+    }
+    \caption{Controllo nello spazio dei giunti: la cinematica inversa genera il riferimento articolare e la retroazione chiude l'anello sui soli giunti.}
+    \label{fig:blk_joint}
+\end{figure}
+
+\subsection{Controllo nello spazio operativo}
+
+Nel controllo nello spazio operativo l'anello è chiuso direttamente sulla posizione $\boldsymbol p_e$ del polpastrello, calcolata con la cinematica diretta. L'errore $\boldsymbol e=\boldsymbol p_d-\boldsymbol p_e$ genera una forza cartesiana, trasformata in coppie con la trasposta dello Jacobiano (dualità cineto-statica, Sezione~\ref{sec:statics}):
+\begin{equation}
+    \boldsymbol F=\boldsymbol K_p\,\boldsymbol e+\boldsymbol K_d\,(\dot{\boldsymbol p}_d-\dot{\boldsymbol p}_e),\qquad
+    \boldsymbol\tau=\boldsymbol J_P^\top(\boldsymbol q)\,\boldsymbol F+\boldsymbol P_N\boldsymbol\tau_0+\hat{\boldsymbol g}(\boldsymbol q)
+    \label{eq:ctrl_op}
+\end{equation}
+con $\dot{\boldsymbol p}_e=\boldsymbol J_P\dot{\boldsymbol q}$ e $\boldsymbol P_N=\boldsymbol I-\boldsymbol J_P^\top(\boldsymbol J_P\boldsymbol J_P^\top)^{-1}\boldsymbol J_P$ proiettore nel nucleo, a cui si affida il termine di postura $\boldsymbol\tau_0$ per sfruttare la ridondanza (polso più dito: $5$ giunti per $3$ coordinate) senza alterare la forza al polpastrello. Un integrale sull'errore $\boldsymbol e$ elimina l'offset dovuto a una compensazione di gravità imperfetta. Con questa struttura non serve la cinematica inversa a ogni istante, ma servono lo Jacobiano e, vicino alle singolarità, un trattamento della sua inversione (Sezione~\ref{sec:manipulability_ellipsoids}).
+
+\begin{figure}[!ht]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[>=Stealth, node distance=1.3cm and 1.2cm,
+        block/.style={draw, rectangle, minimum height=1.0cm, minimum width=2.0cm, align=center, font=\small},
+        sum/.style={draw, circle, inner sep=1.5pt, font=\small}]
+        \node (pd) {$\boldsymbol p_d,\dot{\boldsymbol p}_d$};
+        \node[sum, right=of pd] (s) {$\scriptstyle +$};
+        \node[block, right=of s] (c) {$\boldsymbol K_p,\boldsymbol K_d$\\(PD cartesiano)};
+        \node[block, right=of c] (jt) {$\boldsymbol J_P^\top(\boldsymbol q)$};
+        \node[sum, right=1.0cm of jt] (s2) {$\scriptstyle +$};
+        \node[block, right=of s2] (rob) {Robot};
+        \node[block, right=of rob] (fk) {$\boldsymbol p_e=\boldsymbol k(\boldsymbol q)$\\$\dot{\boldsymbol p}_e=\boldsymbol J_P\dot{\boldsymbol q}$};
+        \node[block, above=1.0cm of s2] (null) {Postura nel\\nucleo $\boldsymbol P_N\boldsymbol\tau_0$};
+        \node[block, below=1.0cm of s2] (gc) {$\hat{\boldsymbol g}(\boldsymbol q)$};
+        \draw[->] (pd) -- (s); \draw[->] (s) -- node[above]{$\boldsymbol e$} (c); \draw[->] (c) -- node[above]{$\boldsymbol F$} (jt);
+        \draw[->] (jt) -- (s2); \draw[->] (s2) -- node[above]{$\boldsymbol\tau$} (rob); \draw[->] (rob) -- node[above]{$\boldsymbol q,\dot{\boldsymbol q}$} (fk);
+        \draw[->] (null) -- (s2); \draw[->] (gc) -- (s2);
+        \draw[->] (fk.south) -- ++(0,-1.9cm) -| (s.south) node[pos=0.25, below]{$\boldsymbol p_e,\dot{\boldsymbol p}_e$};
+    \end{tikzpicture}%
+    }
+    \caption{Controllo nello spazio operativo: l'anello è chiuso sulle coordinate cartesiane del polpastrello e la forza è trasformata in coppie con $\boldsymbol J_P^\top$; la ridondanza è gestita nel nucleo.}
+    \label{fig:blk_op}
+\end{figure}
+
+\subsection{Confronto in spazio libero}
+
+I due schemi sono stati confrontati su un movimento verticale libero del polpastrello del medio (da $30$ a $12$~mm in $0{,}8$~s con legge a quinto grado), senza contatto, con guadagni espressi come pulsazioni naturali. Il controllore nello spazio dei giunti è a coppia calcolata, $\boldsymbol\tau=\boldsymbol M(\ddot{\boldsymbol q}_d+2\zeta\omega_n\dot{\boldsymbol e}_q+\omega_n^2\boldsymbol e_q)+\hat{\boldsymbol h}+\hat{\boldsymbol g}$, e insegue il riferimento articolare ricavato con la cinematica inversa; il controllore operativo usa la legge~\eqref{eq:ctrl_op} con $\boldsymbol F=\boldsymbol\Lambda(\omega_n^2\boldsymbol e+2\zeta\omega_n\dot{\boldsymbol e})$ e smorzamento critico, dove $\boldsymbol\Lambda=(\boldsymbol J\boldsymbol M^{-1}\boldsymbol J^\top)^{-1}$ è l'inerzia operativa. I risultati sono nella Tabella~\ref{tab:ctrl_free} e nella Figura~\ref{fig:ctrl_freespace}.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|p{6.2cm}|p{2.2cm}|p{2.2cm}|p{2.4cm}|}
+        \hline
+        Controllore & Errore RMS $z$ [mm] & Errore max $z$ [mm] & Errore max laterale [mm]\\ \hline \hline
+        Spazio dei giunti, coppia calcolata ($\omega_n=40$~rad/s) & 1,03 & 2,25 & 3,42\\
+        Operativo PD ($\omega_n=40$~rad/s) & 0,96 & 1,80 & 2,94\\
+        Operativo PD+I ($\omega_n=40$~rad/s) & 0,83 & 1,74 & 2,15\\
+        Operativo PD ($\omega_n=100$~rad/s) & 0,20 & 0,44 & 0,64\\
+        \hline
+    \end{tabular}
+    \caption{Inseguimento in spazio libero del polpastrello del medio (modello a corpi rigidi, compensazione di gravità con errore del $15\%$).}
+    \label{tab:ctrl_free}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{control/ctrl_freespace.png}
+    \caption{Riferimento (sinistra) ed errore di inseguimento in quota (destra) dei controllori nello spazio dei giunti e nello spazio operativo.}
+    \label{fig:ctrl_freespace}
+\end{figure}
+
+A parità di banda ($\omega_n=40$~rad/s) le due strategie sono equivalenti: l'errore RMS è 1,03~mm per il controllo nello spazio dei giunti e 0,96~mm per quello operativo, perché in entrambi i casi l'errore dominante è il ritardo dovuto alla banda finita. L'integrale riduce l'errore RMS a 0,83~mm (e l'errore finale da 0,90 a 0,04~mm) e aumentando la banda del controllore operativo a $100$~rad/s l'errore scende a 0,20~mm. La differenza non sta quindi nell'accuratezza in spazio libero, ma in \emph{ciò che si specifica e si osserva}: nello spazio operativo il riferimento è la posizione del polpastrello, la ridondanza si risolve nel nucleo senza dover scegliere in anticipo una soluzione della cinematica inversa, e la stessa legge si estende naturalmente alle forze di contatto, che nello spazio dei giunti non compaiono.
+
+% =============================================================================================
+\section{Controllo di interazione}
+\label{sec:ctrl_interazione}
+
+\subsection{Il contatto come ambiente rigido}
+
+Quando il polpastrello tocca il tasto, il tasto è un ambiente con rigidezza $k_e$ (nel modello, $300$~N/m fino al fondo corsa e $8000$~N/m oltre). Un controllore di sola posizione che impone un riferimento $z_d$ \emph{sotto} la superficie lo \emph{vincola} a una posizione che non può raggiungere, e la forza di contatto non è una grandezza controllata ma il risultato dell'equilibrio tra due molle in serie. Con un controllore operativo di rigidezza $K$ e un tasto di rigidezza $k_e$ l'equilibrio statico dà
+\begin{equation}
+    F=k_{eq}\,\delta_d,\qquad k_{eq}=\frac{K\,k_e}{K+k_e},\qquad \delta_d=z_s-z_d
+    \label{eq:keq}
+\end{equation}
+con $\delta_d$ la profondità comandata sotto la superficie $z_s$. La sensibilità della forza all'errore di posizione è $\partial F/\partial z_d=k_{eq}$: con un controllore rigido ($K\gg k_e$) vale circa $k_e$, e una incertezza di $1$~mm sulla posizione del tasto o sulla cinematica corrisponde a una variazione di forza pari a $k_e\cdot1$~mm: $0{,}3$~N prima del fondo corsa, circa $8$~N oltre. Per esercitare una forza prescritta, un riferimento di posizione richiederebbe di conoscere $z_s$ con precisione sub-millimetrica.
+
+\subsection{Simulazione}
+
+La Figura~\ref{fig:ctrl_position_contact} riporta la forza a regime in funzione della profondità comandata per tre rigidezze del controllore operativo ($K=100$, $1000$, $3000$~N/m), con avvicinamento lento ($0{,}05$~m/s).
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{control/ctrl_position_contact.png}
+    \caption{Controllo di sola posizione contro il tasto. Sinistra: forza a regime in funzione della profondità comandata sotto la superficie, per tre rigidezze; il fondo corsa ($8$~mm) cambia la pendenza. Destra: andamento temporale della forza per $K=3000$~N/m e tre profondità comandate.}
+    \label{fig:ctrl_position_contact}
+\end{figure}
+
+La pendenza prima del fondo corsa è 0,075, 0,23 e 0,27~N/mm per $K=100$, $1000$ e $3000$~N/m, in accordo con la~\eqref{eq:keq} ($k_{eq}=75$, $231$, $273$~N/m). Oltre il fondo corsa la pendenza cresce: 0,77~N/mm tra $10$ e $12$~mm per $K=1000$~N/m e 1,4~N/mm tra $8$ e $10$~mm per $K=3000$~N/m (a $12$~mm la forza con $K=3000$~N/m si ferma a 5,4~N per il limite di coppia del dito). Con il controllore più rigido, $2$~mm di profondità comandata in più portano la forza da 2,2 a 5,1~N. Se invece la posizione del tasto è sbagliata di $\pm2$~mm rispetto a quella assunta dal controllore (riferimento tarato per $2{,}5$~N, $K=1000$~N/m), la forza a regime varia da 1,97 a 4,32~N ($-22\%$, $+71\%$ rispetto al valore nominale di 2,53~N) e il picco all'impatto va da 2,33 a 5,15~N (Tabella~\ref{tab:ctrl_compare}). Con le inerzie del modello a corpi rigidi l'urto è invece modesto: il picco passa da 2,57 a 3,16~N tra $0{,}05$ e $0{,}25$~m/s di velocità di avvicinamento, perché l'inerzia efficace della punta è piccola; il problema principale del controllo di sola posizione non è l'urto, ma la forza a regime.
+
+\paragraph{Conclusione.} Il controllo di sola posizione \emph{non} fallisce nel senso che diverga (è stabile), ma perché non controlla la grandezza di interesse: la forza dipende da quantità poco note (altezza del tasto, calibrazione cinematica, stato del fondo corsa) amplificate dalla rigidezza dell'ambiente. Occorre introdurre un comportamento cedevole o una retroazione di forza.
+
+% =============================================================================================
+\section{Controllo di impedenza}
+\label{sec:ctrl_impedenza}
+
+\subsection{Il dito come sistema massa--molla--smorzatore}
+
+Il controllo di impedenza impone al polpastrello la dinamica di un sistema massa--molla--smorzatore rispetto a una traiettoria di riferimento $\boldsymbol p_d$,
+\begin{equation}
+    \boldsymbol M_d\,\ddot{\boldsymbol e}+\boldsymbol D_d\,\dot{\boldsymbol e}+\boldsymbol K_d\,\boldsymbol e=\boldsymbol F_{\rm ext},\qquad \boldsymbol e=\boldsymbol p_e-\boldsymbol p_d
+    \label{eq:impedance}
+\end{equation}
+dove $\boldsymbol F_{\rm ext}$ è la forza di contatto. Con la dinamica operativa $\boldsymbol\Lambda\ddot{\boldsymbol p}_e=\boldsymbol F+\boldsymbol F_{\rm ext}$ (gravità e termini di velocità compensati), la legge di controllo che realizza la~\eqref{eq:impedance} è
+\begin{equation}
+    \boldsymbol F=\boldsymbol\Lambda\ddot{\boldsymbol p}_d-\boldsymbol\Lambda\boldsymbol M_d^{-1}\left(\boldsymbol D_d\dot{\boldsymbol e}+\boldsymbol K_d\boldsymbol e\right)+\left(\boldsymbol\Lambda\boldsymbol M_d^{-1}-\boldsymbol I\right)\boldsymbol F_{\rm ext}
+\end{equation}
+e $\boldsymbol\tau=\boldsymbol J_P^\top\boldsymbol F$ come in~\eqref{eq:ctrl_op}. Se $\boldsymbol M_d=\boldsymbol\Lambda$ l'ultimo termine si annulla e non serve misurare la forza: la legge si riduce a un PD cartesiano $\boldsymbol F=\boldsymbol\Lambda\ddot{\boldsymbol p}_d-\boldsymbol D_d\dot{\boldsymbol e}-\boldsymbol K_d\boldsymbol e$ i cui guadagni hanno il significato fisico di rigidezza e smorzamento \emph{virtuali}. Questa è la versione implementata; la formulazione con $\boldsymbol M_d\neq\boldsymbol\Lambda$, che richiede la misura della forza, non è stata realizzata.
+
+\begin{figure}[!ht]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[>=Stealth,
+        block/.style={draw, rectangle, minimum height=1.0cm, minimum width=2.2cm, align=center, font=\small},
+        sum/.style={draw, circle, inner sep=1.5pt, font=\small}]
+        \node (pd) at (0,0) {$\boldsymbol p_d,\dot{\boldsymbol p}_d$};
+        \node[sum] (s) at (1.8,0) {$\scriptstyle +$};
+        \node[block] (imp) at (4.6,0) {Impedenza\\$\boldsymbol K_d,\boldsymbol D_d$};
+        \node[block] (jt) at (8.0,0) {$\boldsymbol J_P^\top(\boldsymbol q)$};
+        \node[block] (rob) at (11.2,0) {Robot};
+        \node[block] (env) at (11.2,-3.0) {Tasto\\$k_e,\;c_e$};
+        \node[block] (cd) at (4.6,-3.0) {Rilevamento contatto\\$F_m>F_{th}$};
+        \draw[->] (pd) -- (s);
+        \draw[->] (s) -- node[above]{$\boldsymbol e$} (imp);
+        \draw[->] (imp) -- node[above]{$\boldsymbol F$} (jt);
+        \draw[->] (jt) -- node[above]{$\boldsymbol\tau$} (rob);
+        \draw[->] ([xshift=-0.5cm]rob.south) -- node[left]{$\boldsymbol p_e$} ([xshift=-0.5cm]env.north);
+        \draw[->] ([xshift=0.5cm]env.north) -- node[right]{$\boldsymbol F_{\rm ext}$} ([xshift=0.5cm]rob.south);
+        \draw[->] (rob.east) -- ++(1.2,0) |- (0.9,1.7) node[pos=0.75, above]{retroazione $\boldsymbol p_e,\dot{\boldsymbol p}_e$} -| (s.north);
+        \draw[->, dashed] (env.west) -- node[above]{$F_m$} (cd.east);
+        \draw[->, dashed] (cd.north) -- node[right]{$\dot{\boldsymbol p}_d\to\boldsymbol 0$} (imp.south);
+    \end{tikzpicture}%
+    }
+    \caption{Controllo di impedenza con ambiente (tasto). La linea tratteggiata è il rilevamento del contatto che azzera l'anticipo di velocità del riferimento (variante \emph{contact-aware}).}
+    \label{fig:blk_imp}
+\end{figure}
+
+\subsection{Scelta dei parametri}
+
+La rigidezza $K_d$ fissa la sensibilità della forza all'errore di posizione. Combinando $K_d$ con la rigidezza del tasto, la~\eqref{eq:keq} dà $\partial F/\partial z_d=K_dk_e/(K_d+k_e)$: con $K_d=100$~N/m la sensibilità è $75$~N/m ($0{,}075$~N/mm) contro i $225$~N/m del controllo rigido da $1000$~N/m prima del fondo corsa, e soprattutto non cresce di un ordine di grandezza al fondo corsa. Per ottenere una forza $F_d$ il riferimento è posto in una posizione \emph{virtuale} oltre la superficie, $z_d=-\delta-F_d/K_d$ con $\delta$ la penetrazione di equilibrio nel tasto. Lo smorzamento è dimensionato sul contatto, $D_d=2\zeta\sqrt{(K_d+k_e)\Lambda_{zz}}$, con $\Lambda_{zz}$ componente verticale dell'inerzia operativa.
+
+\subsection{Risultati}
+
+\paragraph{Robustezza all'incertezza sull'altezza del tasto.} Con il riferimento tarato per $2{,}5$~N, un errore di $\pm2$~mm sulla posizione del tasto produce una forza a regime tra 2,36 e 2,73~N con $K_d=100$~N/m ($-7\%$, $+8\%$ rispetto a 2,54~N), contro 1,97--4,32~N con il controllo rigido (Figura~\ref{fig:ctrl_impedance}, centro).
+
+\paragraph{Smorzamento e urto.} Con la sola legge di impedenza e un riferimento che continua a scendere alla velocità di avvicinamento, un maggiore smorzamento \emph{peggiora} l'urto: a $0{,}25$~m/s il picco di forza è 3,45, 3,76 e 5,09~N per $\zeta=0{,}5$, $1$ e $2$. La ragione è l'anticipo di velocità del riferimento: dopo il contatto il polpastrello è fermo ma $\dot z_d$ vale ancora $-v_a$, per cui il termine $D_d(\dot z_d-\dot z)$ spinge nel tasto con una forza pari a $D_dv_a$. Lo smorzatore assorbe l'urto solo se il riferimento non continua a spingere. Azzerando l'anticipo di velocità al rilevamento del contatto (soglia di $0{,}05$~N sulla forza), la variante \emph{con rilevamento del contatto} dà un picco di 2,54~N per tutti e tre i valori di $\zeta$, praticamente coincidente con la forza a regime, ed esso risulta indipendente dalla velocità di avvicinamento (2,54--2,56~N tra $0{,}05$ e $0{,}25$~m/s, contro 2,80--3,76~N per l'impedenza semplice). Con le inerzie del modello a corpi rigidi le differenze sono contenute (inferiori a $2$~N a $0{,}25$~m/s) perché l'inerzia efficace della punta è di poche decine di grammi; un modello con inerzia uniforme per giunto, usato in una prima versione dello studio, sovrastimava l'inerzia della punta e dava picchi di $10$--$16$~N.
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{control/ctrl_impedance.png}
+    \caption{Impedenza ($K_d=100$~N/m). Sinistra: forza di contatto per vari rapporti di smorzamento (variante \emph{contact-aware}) a confronto con l'impedenza semplice e il controllo rigido. Centro: forza a regime in funzione dell'errore sull'altezza del tasto (le curve delle due varianti di impedenza coincidono). Destra: picco di forza in funzione della velocità di avvicinamento.}
+    \label{fig:ctrl_impedance}
+\end{figure}
+
+\paragraph{Limiti dell'impedenza.} La forza a regime non è regolata: resta proporzionale all'errore di posizione tramite $K_d$ ($\pm8\%$ per $\pm2$~mm) e dipende dall'errore di compensazione della gravità (la forza nominale è 2,54~N invece di $2{,}5$~N). Una forza prescritta con precisione richiede una retroazione di forza.
+
+% =============================================================================================
+\section{Controllo ibrido forza/posizione}
+\label{sec:ctrl_ibrido}
+
+Il controllo ibrido separa lo spazio operativo in direzioni controllate in posizione e in forza mediante una matrice di selezione $\boldsymbol S$,
+\begin{equation}
+    \boldsymbol F=\boldsymbol S\,\boldsymbol F_{\rm pos}+(\boldsymbol I-\boldsymbol S)\,\boldsymbol F_{\rm for},\qquad \boldsymbol S=\mathrm{diag}(1,1,0)
+    \label{eq:hybrid}
+\end{equation}
+Nel tocco pianistico la direzione di pressione ($z$) è vincolata dal tasto e quindi controllata in forza, mentre le direzioni tangenziali ($x,y$) sono libere e restano controllate in posizione: il dito deve premere \emph{il tasto giusto}, senza scivolare su quello adiacente (che dista $23{,}5$~mm), mentre la forza segue il profilo che determina la dinamica del tocco.
+
+\begin{figure}[!ht]
+    \centering
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}[>=Stealth,
+        block/.style={draw, rectangle, minimum height=1.0cm, minimum width=2.2cm, align=center, font=\small},
+        sum/.style={draw, circle, inner sep=1.5pt, font=\small}]
+        
+        % ramo di posizione (alto)
+        \node (pd) at (0,0) {$\boldsymbol p_d$};
+        \node[sum] (sp) at (1.6,0) {$\scriptstyle +$};
+        \node[block] (cp) at (4.2,0) {PID\\posizione};
+        \node[block] (S) at (6.8,0) {$\boldsymbol S$};
+        \node[sum] (sum) at (9.0,-1.6) {$\scriptstyle +$};
+        
+        % ramo di forza (basso)
+        \node (fd) at (0,-3.2) {$F_d(t)$};
+        \node[sum] (sf) at (1.6,-3.2) {$\scriptstyle +$};
+        \node[block, minimum width=3.4cm] (cf) at (4.8,-3.2) {$F_d+k_f e_F+k_{i}\!\int e_F\,dt$};
+        \node[block] (IS) at (8.2,-3.2) {$\boldsymbol I-\boldsymbol S$};
+        
+        % catena comune
+        \node[block] (jt) at (11.2,-1.6) {$\boldsymbol J_P^\top$};
+        \node[block] (rob) at (13.8,-1.6) {Robot};
+        \node[block] (env) at (16.4,-1.6) {Tasto};
+        \node[block, minimum width=4.2cm] (sm) at (6.8,2.6) {Macchina a stati\\avvicinamento / forza / ritrazione};
+        
+        % collegamenti
+        \draw[->] (pd) -- (sp); 
+        \draw[->] (sp) -- node[above]{$\boldsymbol e_p$} (cp); 
+        \draw[->] (cp) -- (S);
+        \draw[->] (S) -| (sum);
+        
+        \draw[->] (fd) -- (sf); 
+        \draw[->] (sf) -- node[above]{$e_F$} (cf); 
+        \draw[->] (cf) -- (IS);
+        \draw[->] (IS) -| (sum);
+        
+        \draw[->] (sum) -- node[above]{$\boldsymbol F$} (jt);
+        \draw[->] (jt) -- node[above]{$\boldsymbol\tau$} (rob);
+        \draw[->] (rob) -- (env);
+        
+        % RAMI DI RETROAZIONE CORRETTI
+        % Aumentato l'offset da 1.9 a 2.5 per passare sopra i blocchi di posizione
+        \draw[->] (env.north) -- ++(0,2.5) -| node[pos=0.2, above]{$\boldsymbol p_e,\dot{\boldsymbol p}_e$} (sp.north);
+        % Aumentato l'offset negativo da -1.5 a -2.5 per passare sotto i blocchi di forza
+        \draw[->] (env.south) -- ++(0,-2.5) -| node[pos=0.25, below]{$F_m$} (sf.south);
+        
+        % collegamenti macchina a stati
+        \draw[->, dashed] (sm.south) -- (S.north);
+        \draw[->, dashed] (sm.west) -| (cp.north);
+    \end{tikzpicture}%
+    }
+    \caption{Controllo ibrido forza/posizione: la matrice di selezione $\boldsymbol S$ assegna $x,y$ all'anello di posizione e $z$ all'anello di forza; una macchina a stati commuta tra avvicinamento (posizione in $z$), contatto (forza in $z$) e ritrazione (linee tratteggiate).}
+    \label{fig:blk_hybrid}
+\end{figure}
+
+\subsection{Il controllore di RoboLiszt}
+
+\paragraph{Fasi.} \emph{(1) Avvicinamento}: riferimento verticale che scende a velocità $v_a$ con una rampa di $0{,}15$~s. \emph{(2) Contatto}: quando la forza supera $0{,}05$~N si commuta al controllo di forza lungo $z$, con profilo $F_d(t)$ composto da una salita a quinto grado di durata $t_a$ (\emph{attacco}), un mantenimento di $0{,}25$~s e un rilascio. \emph{(3) Ritrazione}: ritorno alla quota di sicurezza.
+
+\paragraph{Leggi.} Le direzioni controllate in posizione ($x$, $y$ e, in avvicinamento e ritrazione, $z$) usano una legge a pulsazione naturale $\omega_n$ e rapporto di smorzamento $\zeta$,
+\begin{equation}
+    \boldsymbol F_{\rm pos}=\boldsymbol\Lambda\left(\omega_n^2\,\boldsymbol e+2\zeta\omega_n\,\dot{\boldsymbol e}\right),\qquad \boldsymbol\Lambda=\left(\boldsymbol J\boldsymbol M^{-1}\boldsymbol J^\top\right)^{-1}
+\end{equation}
+con $\boldsymbol\Lambda$ inerzia operativa: i guadagni sono così indipendenti dall'inerzia della punta. Si usa $\omega_n=100$~rad/s nel piano $x$--$y$, $\omega_n=40$~rad/s in $z$ e $\zeta=1$. In contatto la componente verticale è
+\begin{equation}
+    F_{d,\rm down}=F_d+k_f(F_d-F_m)+k_{i,f}\!\int(F_d-F_m)\,dt,\qquad F_z=-\mathrm{sat}_{F_{\max}}(F_{d,\rm down})-c_f\,\dot z
+\end{equation}
+con $F_m$ forza misurata, $k_f=0{,}8$, $k_{i,f}=3$~s$^{-1}$, $F_{\max}=15$~N e smorzamento in contatto $c_f=15$~N$\cdot$s/m. Lo Jacobiano $\boldsymbol J$ ($3\times5$) comprende i due giunti del polso e i tre del dito medio: la forza verticale al polpastrello ha una leva molto più grande attraverso il polso che attraverso le falangi (Sezione~\ref{sec:val_statica}). La ridondanza è risolta con il proiettore nel nucleo dinamicamente consistente e un termine di postura proporzionale all'inerzia; le coppie sono saturate ai limiti degli attuatori (gli integratori si fermano in saturazione) e la gravità e l'attrito sono compensati con un modello errato del $15\%$.
+
+\paragraph{Frequenza di controllo.} Con le inerzie del modello a corpi rigidi, piccole sui giunti distali, l'anello di forza richiede un periodo di campionamento breve. Il confronto tra periodi di controllo di $1$, $2$ e $5$~ms (Tabella~\ref{tab:ctrl_rate}) mostra che a $1$~kHz i tre tocchi sono regolati, a $2$~kHz il tocco mf e quello ff peggiorano (perdita di contatto e saturazione), a $5$~ms il controllo è instabile: l'errore RMS in mantenimento sale al 93\% per pp.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|ccc|ccc|}
+        \hline
+        & \multicolumn{3}{c|}{errore RMS in mantenimento [\%]} & \multicolumn{3}{c|}{perdite di contatto}\\
+        Periodo & pp & mf & ff & pp & mf & ff\\ \hline \hline
+        $1$~ms & 4,6 & 3,7 & 1,7 & 0 & 0 & 0\\
+        $2$~ms & 4,6 & 1,7 & 18,3 & 0 & 1 & 1\\
+        $5$~ms & 92,6 & 26,4 & 71,6 & 0 & 6 & 27\\
+        \hline
+    \end{tabular}
+    \caption{Effetto del periodo di controllo sul controllo ibrido del tocco (modello a corpi rigidi, limite di coppia del dito $0{,}25$~N$\cdot$m).}
+    \label{tab:ctrl_rate}
+\end{table}
+
+\paragraph{Taratura e validazione.} Con la banda laterale iniziale ($\omega_n=40$~rad/s) il polpastrello deviava lateralmente di 7,7, 7,7 e 10,7~mm (tocchi pp, mf, ff), cioè circa un terzo o metà della larghezza del tasto; con $\omega_n=100$~rad/s l'errore scende a 0,7, 1,3 e 1,5~mm (Figura~\ref{fig:ctrl_hybrid_lateral}). Il valore è stato scelto sul dito medio e sul tasto E4; la Tabella~\ref{tab:ctrl_robust} riporta il comportamento in condizioni \emph{non} usate nella taratura.
+
+\subsection{Risultati}
+
+La Tabella~\ref{tab:ctrl_compare} confronta i quattro controllori sulla stessa prova: forza desiderata $2{,}5$~N, avvicinamento a $0{,}12$~m/s, con e senza errore di $\pm2$~mm sulla posizione del tasto.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.15}
+    \footnotesize
+    \begin{tabular}{|p{4.5cm}|c|c|c|c|}
+        \hline
+        \textbf{Controllore} & $F$ a regime & $F$ a regime & Picco a & Picco a\\
+         & nominale [N] & con $\pm2$~mm [N] & $0{,}12$~m/s [N] & $0{,}25$~m/s [N]\\ \hline \hline
+        Posizione ($K=1000$~N/m) & 2,53 & 1,97 -- 4,32 & 2,79 & 3,16\\
+        Impedenza ($K_d=100$~N/m) & 2,54 & 2,36 -- 2,73 & 3,14 & 3,76\\
+        Impedenza con rilevamento del contatto & 2,54 & 2,36 -- 2,73 & 2,54 & 2,54\\
+        Ibrido forza/posizione & 2,53 & 2,53 -- 2,53 & 2,60 & 2,60\\ \hline
+    \end{tabular}
+    \caption{Confronto dei controllori di contatto (forza desiderata $2{,}5$~N; modello a corpi rigidi). Il picco è il massimo della forza durante l'impatto; i valori a regime sono mediati su un intervallo di tenuta senza rilascio.}
+    \label{tab:ctrl_compare}
+\end{table}
+
+\paragraph{Forza.} Grazie alla retroazione di forza il controllore ibrido mantiene 2,53~N con scarto trascurabile al variare di $\pm2$~mm sull'altezza del tasto, mentre posizione e impedenza dipendono da quell'errore. Il picco all'impatto ($2{,}6$~N) è indipendente dalla velocità di avvicinamento nell'intervallo $0{,}05$--$0{,}25$~m/s. L'impedenza con rilevamento del contatto ha un picco confrontabile ($2{,}5$--$2{,}6$~N) ma non regola la forza a regime. I due approcci sono quindi complementari: l'impedenza minimizza l'urto con un controllo semplice, il controllo ibrido regola la forza anche se l'altezza del tasto è incerta.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \footnotesize
+    \begin{tabular}{|p{4.0cm}|c|c|c|c|}
+        \hline
+        Condizione non usata nella taratura & $F$ media [N] & Picco [N] & Errore laterale max [mm] & Passi saturi\\ \hline \hline
+        errore di gravità $0\%$ & 2,53 & 2,58 & 1,49 & 0\\
+        errore di gravità $30\%$ & 2,53 & 2,61 & 1,07 & 0\\
+        rigidezza del tasto $\times0{,}7$ & 2,53 & 2,62 & 1,27 & 0\\
+        rigidezza del tasto $\times1{,}3$ & 2,52 & 2,58 & 1,28 & 0\\
+        dito indice (tasto D4) & 2,53 & 2,60 & 1,58 & 0\\
+        dito anulare (tasto F4) & 2,53 & 2,61 & 1,73 & 0\\
+        \hline
+    \end{tabular}
+    \caption{Robustezza del controllo ibrido (forza desiderata $2{,}5$~N, $\omega_n=100$~rad/s in $x$--$y$): variazioni dell'errore sul modello di gravità, della rigidezza del tasto e dito diverso da quello di taratura.}
+    \label{tab:ctrl_robust}
+\end{table}
+
+\paragraph{Posizione laterale e robustezza.} Nelle prove di tocco il polpastrello resta entro 0,7, 1,3 e 1,5~mm dal centro del tasto per i profili pp, mf e ff, e l'impedenza con rilevamento del contatto a $0{,}25$~m/s mostra 1,3~mm. Il controllo ibrido è insensibile alle variazioni considerate in Tabella~\ref{tab:ctrl_robust}: la forza media resta tra $2{,}52$ e $2{,}53$~N e l'errore laterale è al più di circa 1,7~mm anche con un errore del $30\%$ sulla gravità, con la rigidezza del tasto variata di $\pm30\%$ e con indice e anulare al posto del medio. Questo test non esaurisce le incertezze reali (rumore di misura della forza, ritardi di attuazione, variazione del fondo corsa).
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{control/ctrl_hybrid_lateral.png}
+    \caption{Controllo ibrido, profili pp, mf, ff: errore laterale del polpastrello con banda laterale di $40$~rad/s (sinistra) e di $100$~rad/s (centro) e forza verticale con $100$~rad/s (destra).}
+    \label{fig:ctrl_hybrid_lateral}
+\end{figure}
+
+\paragraph{Tocco dinamico.} Con i tre profili del Task~5 (Tabella~\ref{tab:touch} nel Capitolo~\ref{ch:risultati}) la velocità d'impatto segue quella di avvicinamento e la forza di picco cresce con il profilo ($1{,}04$, $2{,}60$ e $5{,}18$~N per forze desiderate di $1$, $2{,}5$ e $5$~N). Il tocco ff richiede una coppia al giunto del dito maggiore di quella nominale ($0{,}1$~N$\cdot$m): con il limite nominale il dito satura e la forza non raggiunge il riferimento, e la prova ff è stata eseguita con un limite di $0{,}25$~N$\cdot$m (Sezione~\ref{sec:val_controllo}). L'andamento temporale è in Figura~\ref{fig:touch}.
+
+\paragraph{Limiti.}
+I risultati valgono per il modello a corpi rigidi ridotto al polso e a un dito, con inerzie, limiti di coppia e parametri di contatto ipotizzati, passo di controllo di $1$~ms e plant a $0{,}5$~ms.
+Non sono state valutate le altre dita oltre a quelle in Tabella~\ref{tab:ctrl_robust}, il rumore di misura della forza, i ritardi di attuazione e il confronto con un robot fisico o con un simulatore a contatti diverso (Sezione~\ref{sec:val_gazebo}).
+
+
+\section{Sintesi}
+
+\begin{itemize}
+    \item \textbf{Spazio dei giunti o operativo}: a parità di banda ($\omega_n=40$~rad/s) in spazio libero sono equivalenti (errore RMS 1,03 e 0,96~mm); lo spazio operativo specifica il compito sul polpastrello e gestisce la ridondanza nel nucleo dinamicamente consistente.
+    \item \textbf{Controllo di sola posizione}: stabile ma non controlla la forza, che dipende dall'errore di posizione tramite la rigidezza dell'ambiente: 0,23~N/mm con $K=1000$~N/m prima del fondo corsa e fino a 1,4~N/mm con $K=3000$~N/m oltre; un errore di $\pm2$~mm sull'altezza del tasto sposta la forza da 1,97 a 4,32~N (nominale 2,53~N).
+    \item \textbf{Impedenza}: riduce di circa un fattore tre la sensibilità all'altezza del tasto (2,36--2,73~N); lo smorzatore riduce l'urto solo se il riferimento non continua a spingere dopo il contatto.
+    \item \textbf{Ibrido}: regola la forza ($2,53$~N per un valore desiderato di $2{,}5$~N, invariato per $\pm2$~mm sull'altezza del tasto, per $0$--$30\%$ di errore sulla gravità, per $\pm30\%$ sulla rigidezza del tasto e per indice e anulare) e mantiene il polpastrello entro $1{,}8$~mm dal centro del tasto, al costo di una macchina a stati, di una misura di forza e di un anello di controllo a $1$~kHz.
+\end{itemize}

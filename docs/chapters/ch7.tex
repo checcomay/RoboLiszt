@@ -1,0 +1,39 @@
+\chapter{Conclusioni e sviluppi futuri}
+\label{ch:conclusioni}
+
+\section{Traguardi raggiunti}
+
+Il lavoro ha portato alla realizzazione di un modello completo, analitico e verificato numericamente, di una mano robotica antropomorfa a $20$ gradi di libertà per l'esecuzione pianistica, e di un insieme di strumenti per analizzarlo, simularlo e controllarlo. I risultati principali sono i seguenti.
+\begin{itemize}
+    \item \textbf{Modello cinematico e statico}: cinematica diretta ad albero con convenzione D-H, Jacobiano geometrico per catene ramificate, singolarità, statica con dualità cineto-statica ed ellissoidi di manipolabilità in velocità e in forza. È stato individuato che il solo dito, a fondo corsa, è vicino a una singolarità lungo la verticale (velocità verticale circa dieci volte inferiore a quella con il polso).
+    \item \textbf{Cinematica inversa}: un algoritmo a minimi quadrati smorzati con smorzamento adattativo, pesatura dei giunti, gestione dei limiti con insieme attivo, vincoli unilaterali e struttura multi-catena con polso condiviso. L'errore di inseguimento è inferiore a $0{,}1$~mm lungo le traiettorie dei task e l'algoritmo converge in tutti i $100$ casi di prova casuali.
+    \item \textbf{Cinque task}: saluto, pressione di un tasto con tutte le dita, accordo (anche arpeggiato e a cinque note), salto d'ottava, con la dimostrazione quantitativa che la sola rotazione del polso raggiunge al massimo $3$ tasti, e tocco dinamico con controllo ibrido forza/posizione.
+    \item \textbf{Modello dinamico unificato}: formulazione ricorsiva di Newton--Eulero per la struttura ramificata, verificata rispetto a energia potenziale, energia cinetica e conservazione dell'energia, e sua versione ridotta al polso e a un dito usata nella simulazione di contatto; il calcolo delle coppie lungo i task mostra che la gravità determina l'$88$--$93\%$ della coppia nei task di pressione.
+    \item \textbf{Controllo del tocco}: confronto tra controllo nello spazio dei giunti e operativo, controllo di sola posizione, impedenza e controllo ibrido sul modello unificato. Il solo controllo di posizione amplifica l'incertezza sull'altezza del tasto (forza a regime da $1{,}97$ a $4{,}32$~N per $\pm2$~mm), l'impedenza la riduce a $\pm8\%$ e il controllo ibrido la elimina ($2{,}53$~N per un valore desiderato di $2{,}5$~N), anche con un errore del $30\%$ sulla gravità, con la rigidezza del tasto variata di $\pm30\%$ e con indice e anulare, con il polpastrello entro $1{,}8$~mm dal centro del tasto. I tre profili di tocco sono regolati con errore RMS in tenuta del $4{,}3\%$ (pp), $3{,}7\%$ (mf) e $1{,}8\%$ (ff).
+    \item \textbf{Infrastruttura}: pacchetto Python modulare con una batteria di test automatici, generatore di URDF, mondo della tastiera e configurazioni dei controllori, con URDF verificato rispetto al modello D-H entro $10^{-9}$, e pacchetto ROS~2 per Gazebo (nodi di esecuzione dei task, del controllo del tocco e di sintesi audio), non ancora eseguito.
+\end{itemize}
+
+\section{Limiti architetturali e del lavoro}
+
+\paragraph{Gradi di libertà del polso.} Il polso ha due gradi di libertà rotazionali e nessuna traslazione. Ne derivano tre conseguenze documentate: il solo moto delle dita non raggiunge il fondo corsa (serve il contributo del polso, con flessione di circa $12$--$16^\circ$); la raggiungibilità laterale con sola rotazione è limitata a circa $3$ tasti, per cui il salto d'ottava è stato eseguito con un carrello virtuale non presente nell'architettura originale; infine il polso sopporta circa il $96\%$ della coppia di contatto sul pitch.
+
+\paragraph{Parametri ipotizzati.} I parametri inerziali, i limiti di coppia, i parametri del contatto e la posizione della base della mano sono ipotesi di progetto: i risultati quantitativi in coppia e in forza vanno interpretati di conseguenza. In particolare il tocco ff richiede una coppia al giunto del dito di circa $0{,}19$~N$\cdot$m, quasi il doppio del valore nominale ipotizzato ($0{,}1$~N$\cdot$m), con il quale la forza massima sostenibile è di circa $2{,}7$~N.
+
+\paragraph{Modello dinamico ridotto.} Il controllo del tocco è simulato su un modello ridotto al polso e a un solo dito, con gli altri giunti fermi, e richiede un periodo di controllo non superiore a $1$~ms; la postura del dito nei tocchi è vicina ai limiti articolari (margine di circa $5^\circ$) e con un errore del $30\%$ sulla compensazione di gravità un giunto supera il proprio limite.
+
+\paragraph{Taratura e validazione del controllore.} La banda laterale del controllo ibrido è stata scelta sul dito medio e sul tasto E4; la validazione su condizioni non usate nella taratura (altre dita, rigidezza del tasto, errore sul modello di gravità) è limitata ai casi descritti nel Capitolo~\ref{ch:controllo}. Non sono stati valutati rumore di misura della forza, ritardi di attuazione e un controllo su un robot fisico.
+
+\paragraph{Semplificazioni del modello.} I task suonano soltanto tasti bianchi (i tasti neri sono presenti nel mondo di simulazione e nel modulo audio ma non nei task), senza interferenza tra le dita né contatto laterale.
+
+\paragraph{Gazebo.} Il pacchetto ROS~2 per Gazebo non è mai stato eseguito: i risultati della simulazione fisica non sono disponibili e il protocollo di validazione della Sezione~\ref{sec:val_gazebo} è da svolgere. La coerenza geometrica e inerziale dell'URDF è verificata soltanto in Python.
+
+\section{Sviluppi futuri}
+
+\begin{itemize}
+    \item \textbf{Validazione in Gazebo}: esecuzione del protocollo della Tabella~\ref{tab:gz_protocol} (Task~1--4 e Task~5, confronto con la cinematica e con i risultati Python), con attenzione alle inerzie molto piccole dei giunti distali, al contatto sul fondo corsa e ai tempi di calcolo del nodo di controllo.
+    \item \textbf{Parametri reali}: sostituzione dei parametri inerziali con dati CAD o identificati, e dei limiti di coppia con quelli degli attuatori (in particolare per il giunto del dito nei tocchi forti).
+    \item \textbf{Postura e controllo}: riprogettazione della postura del dito per aumentare il margine dai limiti articolari, estensione del controllo ibrido al modello completo e a più dita contemporaneamente (accordi), prove con rumore di misura e ritardi di attuazione.
+    \item \textbf{Cinematica al secondo ordine}: inversione cinematica a livello di accelerazione, utile per traiettorie rapide, e risoluzione della ridondanza con criteri dinamici.
+    \item \textbf{Pianificazione musicale}: collegamento con una partitura, con scelta automatica della diteggiatura compatibile con i limiti della mano, tasti neri e collisioni tra le dita.
+    \item \textbf{Mano e braccio}: dotare la struttura di una traslazione reale, per esempio con un braccio robotico, in sostituzione del carrello virtuale.
+\end{itemize}

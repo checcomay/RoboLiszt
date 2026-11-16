@@ -1,0 +1,861 @@
+
+\chapter{Modellazione cinematica e statica}
+
+Il presente capitolo è dedicato alla descrizione dell'architettura meccanica e della modellazione geometrica del manipolatore antropomorfo sviluppato. 
+Nelle sezioni seguenti verrà analizzata la topologia del sistema e la sua scomposizione in catene cinematiche ramificate, giustificando le scelte progettuali relative all'ottimizzazione dei gradi di libertà per l'esecuzione musicale. 
+L'assegnazione dei sistemi di riferimento e la parametrizzazione spaziale dell'intera struttura verranno formalizzate applicando sistematicamente la Convenzione di Denavit-Hartenberg (D-H), indispensabile per il successivo studio della cinematica e del controllo del moto.
+
+\section{Cinematica diretta}
+
+Un manipolatore robotico è tipicamente costituito da una sequenza di corpi rigidi, denominati bracci (\textit{link}), interconnessi tramite coppie cinematiche o giunti. 
+Nel caso specifico del progetto \textit{RoboLiszt}, la struttura meccanica si avvale esclusivamente di giunti di tipo rotoidale e si configura, dal punto di vista topologico, come una \textbf{catena cinematica aperta e ramificata} (\textit{kinematic tree}). 
+In tale architettura, la radice della catena è vincolata a una base (l'avambraccio), mentre le terminazioni distali (i polpastrelli) fungono da organi terminali (\textit{end-effector}) per l'interazione spaziale con la tastiera musicale.
+
+La postura complessiva della struttura è determinata dal numero di gradi di libertà (DoF), ciascuno dei quali corrisponde a una specifica variabile di giunto. 
+L'obiettivo primario della cinematica diretta è definire la posa esatta dell'organo terminale in funzione dei valori assunti da tali variabili.
+
+Fissata una terna di riferimento solidale alla base $O_b-x_b y_b z_b$, la funzione cinematica diretta è espressa analiticamente dalla matrice di trasformazione omogenea:
+\begin{equation}
+    \boldsymbol{T}_e^b(\boldsymbol{q}) = 
+    \begin{bmatrix} 
+        \boldsymbol{n}_e^b(\boldsymbol{q}) & \boldsymbol{s}_e^b(\boldsymbol{q}) & \boldsymbol{a}_e^b(\boldsymbol{q}) & \boldsymbol{p}_e^b(\boldsymbol{q}) \\ 
+        0 & 0 & 0 & 1 
+    \end{bmatrix}
+    \label{eq:forward_kinematics_matrix}
+\end{equation}
+all'interno della quale $\boldsymbol{q}$ rappresenta il vettore delle variabili di giunto. 
+I vettori $\boldsymbol{n}_e^b(\boldsymbol{q})$, $\boldsymbol{s}_e^b(\boldsymbol{q})$ e $\boldsymbol{a}_e^b(\boldsymbol{q})$ costituiscono i versori della terna solidale all'organo terminale (identificando rispettivamente la direzione normale, di scivolamento e di approccio), mentre $\boldsymbol{p}_e^b(\boldsymbol{q})$ individua il vettore posizione dell'origine della terna utensile rispetto all'origine della terna base.
+Adattando la convenzione classica all'interazione musicale di \textit{RoboLiszt}, l'origine della terna utensile viene posta in corrispondenza del centro geometrico del polpastrello, con l'asse di approccio orientato verso la normale del tasto da premere.
+
+\subsection{Catena cinematica aperta}
+
+Una catena cinematica è definita “aperta” quando esiste un'unica sequenza di corpi rigidi (link) che connette i due estremi della struttura; altrimenti, la catena si definisce “chiusa” quando una sequenza di link forma un anello cinematico.
+L'analisi cinematica diretta di un manipolatore ad albero richiede un metodo sistematico per definire posizione e orientamento dei vari membri articolati. 
+
+Per calcolare in modo ricorsivo l'equazione cinematica diretta, si adotta la \textbf{convenzione di Denavit-Hartenberg (D-H)}, un metodo standardizzato che permette di definire la posa relativa tra due bracci consecutivi. 
+Fissato un sistema di riferimento solidale a ciascun \textit{link}, la posizione e l'orientamento della terna $i$ rispetto alla terna $i-1$ sono descritti da quattro parametri geometrici:
+\begin{itemize}
+    \item $a_i$ $\to$ distanza di $O_i$ da $O_{i^\prime}$ misurata lungo l'asse $x_i$.
+    \item $d_i$ $\to$ coordinata di $O_{i^\prime}$ valutata sull'asse $z_{i-1}$.
+    \item $\alpha_i$ $\to$ angolo di torsione (\textit{twist}) attorno all'asse $x_i$, valutato tra gli assi $z_{i-1}$ e $z_i$.
+    \item $\vartheta_i$ $\to$ angolo di giunto attorno all'asse $z_{i-1}$, valutato tra gli assi $x_{i-1}$ e $x_i$.
+\end{itemize}
+Poiché tutti i giunti di \textit{RoboLiszt} sono di natura rotoidale, la variabile articolare è unicamente rappresentata dall'angolo $\vartheta_i$, mentre gli altri tre parametri ($a_i$, $d_i$, $\alpha_i$) rimangono costanti, dipendendo esclusivamente dalla geometria del robot.
+
+In base a tali parametri, la matrice di trasformazione omogenea $\boldsymbol{A}_{i}^{i-1}({q}_i)$, che lega la terna $i$ alla terna precedente, è calcolata tramite la composizione di due rototraslazioni elementari. 
+La matrice di trasformazione complessiva della catena $n$ rispetto alla terna $0$ (fissata alla base, ovvero all'avambraccio) si ottiene moltiplicando in cascata le matrici dei singoli giunti:
+\begin{equation}
+    \boldsymbol{T}_n^0(\boldsymbol{q}) 
+    = \boldsymbol{A}_1^0({q}_1) \boldsymbol{A}_2^1({q}_2) \dots \boldsymbol{A}_n^{n-1}({q}_n)
+    \label{eq:open_kinematic_chain}
+\end{equation}
+Nei paragrafi successivi, questa procedura ricorsiva verrà applicata separatamente per descrivere le catene cinematiche aperte che compongono il polso e ciascuna delle cinque dita del manipolatore, culminando nella definizione esatta della posa dei rispettivi organi terminali (\textit{end-effector}).
+
+\subsection{Architettura della catena cinematica}
+
+È stato già anticipato che la struttura meccanica del manipolatore \textit{RoboLiszt} è stata concepita come una complessa catena cinematica aperta a topologia ramificata (\textit{tree-structure}). 
+L'obiettivo primario di tale architettura è replicare la destrezza della mano umana durante l'esecuzione pianistica, garantendo al contempo la massima efficienza computazionale in fase di simulazione (ambiente Python). 
+
+Sebbene la letteratura scientifica indichi tipicamente l'impiego di 25-30 gradi di libertà per modellare fedelmente una mano antropomorfa, in questo progetto si è scelto di ridurre il numero complessivo dei giunti digitali a \textbf{18}. 
+Questa scelta progettuale nasce dalla necessità di contenere la complessità strutturale, alleggerire l'onere computazionale e agevolare la risoluzione della cinematica inversa. 
+L'ottimizzazione è stata raggiunta preservando un'elevata mobilità per le dita esterne (pollice e mignolo), indispensabili per le espansioni laterali e per raggiungere gli intervalli più ampi sulla tastiera. 
+Di contro, le dita interne sono state vincolate a traiettorie prevalentemente lineari e flesso-estensive, sfruttando la loro naturale tendenza a operare in posizioni spazialmente ravvicinate.
+
+I giunti, di natura rotoidale, sono stati ordinati e numerati secondo uno schema che prevede un corpo centrale da cui si diramano le singole catene digitali. 
+Il giunto $J_2$ costituisce il nodo critico di ramificazione:
+\[
+    0\to1\to2
+    \begin{cases}
+        \to3\to4\to5\to6 & \text{(primo ramo -- mignolo, 4 DoF)}\\
+        \to7\to8\to9 & \text{(secondo ramo -- anulare, 3 DoF)}\\
+        \to10\to11\to12 & \text{(terzo ramo -- medio, 3 DoF)}\\
+        \to13\to14\to15 & \text{(quarto ramo -- indice, 3 DoF)}\\
+        \to16\to17\to18\to19\to20 & \text{(quinto ramo -- pollice, 5 DoF)}
+    \end{cases}
+\]
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{public/joints_chain.png}
+    \caption{Rappresentazione complessiva delle terne di riferimento assegnate ai giunti del manipolatore robotico \textit{RoboLiszt}.}
+    \label{fig:joints_chain}
+\end{figure}
+
+\noindent
+Il robot è stato quindi suddiviso nelle seguenti principali catene cinematiche:
+\begin{itemize}[label=$\square$]
+    \item \textbf{Avambraccio e polso (2 DoF)} $\to$ costituisce la radice globale dell'albero cinematico. 
+    È modellato come un giunto universale con assi incidenti che permette i movimenti di flesso-estensione e deviazione radio-ulnare. 
+    Tale configurazione definisce l'orientamento globale del palmo rispetto alla tastiera e funge da base per il posizionamento delle successive catene cinematiche.
+
+    \item \textbf{Dita planari -- Indice, Medio e Anulare (3 DoF ciascuno)} $\to$ sono state modellate come catene cinematiche seriali puramente planari.
+    Ogni dito possiede tre giunti ad assi paralleli responsabili della flesso-estensione (corrispondenti anatomicamente alle articolazioni metacarpo-falangea, interfalangea prossimale e interfalangea distale), funzionali esclusivamente alla pressione verticale dei tasti.
+
+    \item \textbf{Mignolo (4 DoF):} l'architettura del dito esterno presenta una struttura ibrida che aggiunge un giunto di abduzione/adduzione alla base. 
+    Questo grado di libertà addizionale consente lo spostamento laterale necessario per il raggiungimento delle note esterne o l'esecuzione di intervalli larghi, ed è seguito da una normale catena planare a 3 DoF dedicata alla flessione.
+    
+    \item \textbf{Pollice (5 DoF):} rappresenta la catena cinematica più complessa della struttura, appositamente progettata per garantire una maggiore destrezza e consentire il fondamentale movimento di passaggio del pollice (\textit{thumb-under}) tipico della tecnica pianistica. 
+    Comprende un giunto di rollio carpo-metacarpale (per il moto di opposizione), seguito da flessione del metacarpo, abduzione della nocca, flessione prossimale e flessione del polpastrello.
+\end{itemize}
+La rappresentazione globale delle terne di riferimento associate ai giunti del robot è riportata in Figura~\ref{fig:joints_chain}, la quale sintetizza visivamente la disposizione e l'orientamento dei sistemi di coordinate adottati per la modellazione. 
+A partire da tale schema generale, i paragrafi successivi esamineranno singolarmente le diverse ramificazioni cinematiche; l'applicazione rigorosa della convenzione di Denavit-Hartenberg consentirà di derivare le trasformazioni omogenee indispensabili per calcolare l'esatta posa di ogni \textit{end-effector}.
+
+\subsection{Applicazione di D-H}
+
+L'analisi spaziale del manipolatore è condotta applicando in modo sistematico la convenzione standard di Denavit-Hartenberg (D-H). 
+A ciascun giunto $J_i$ è associata una terna destrorsa $\mathcal F_i=\{O_i,x_i,y_i,z_i\}$, in cui l'asse $z_i$ coincide con l'asse di rotazione del giunto. 
+L'asse $x_i$ è posto lungo la normale comune tra $z_{i-1}$ e $z_i$, orientato lungo il \textit{link} fisico.
+
+La trasformazione omogenea che descrive la posa della terna $i$-esima rispetto alla precedente è definita dal prodotto delle quattro matrici elementari:
+\[
+    {}^{i-1}\boldsymbol{T}_i = \boldsymbol{R}_z(\vartheta_i)\,\boldsymbol{T}_z(d_i)\,\boldsymbol{T}_x(a_i)\,\boldsymbol{R}_x(\alpha_i)
+\]
+Essendo i giunti di tipo rotoidale, la variabile articolare è $\vartheta_i = q_i + \vartheta_{i,0}$ (dove $\vartheta_{i,0}$ rappresenta l'eventuale offset di calibrazione), mentre i parametri $d_i$, $a_i$ e $\alpha_i$ costituiscono costanti geometriche della struttura. 
+In forma matriciale espansa si ottiene:
+\begin{equation}
+    {}^{i-1}\boldsymbol{T}_i=
+    \begin{bmatrix}
+        c_i & -s_i c_{\alpha_i} & s_i s_{\alpha_i} & a_i c_i\\
+        s_i & c_i c_{\alpha_i} & -c_i s_{\alpha_i} & a_i s_i\\
+        0 & s_{\alpha_i} & c_{\alpha_i} & d_i\\
+        0 & 0 & 0 & 1
+    \end{bmatrix}
+\end{equation}
+con $c_i=\cos\vartheta_i$, $s_i=\sin\vartheta_i$, $c_{\alpha_i}=\cos\alpha_i$ e $s_{\alpha_i}=\sin\alpha_i$.
+
+\paragraph{Criteri di validazione geometrica.}
+La parametrizzazione deve essere verificata rispetto al modello CAD definitivo.
+Per ogni coppia di giunti consecutivi occorre verificare:
+\begin{enumerate}
+    \item $z_i$ coincidente con l'asse fisico del giunto;
+    \item $x_i\perp z_i$;
+    \item $x_i$ coincidente con la normale comune;
+    \item terna destrorsa, cioè $y_i=z_i\times x_i$;
+    \item corretto segno di $\alpha_i$ secondo la regola della mano destra;
+    \item corretta distanza $a_i$;
+    \item corretti offset assiali $d_i$;
+    \item corretta relazione $\vartheta_i=q_i+\vartheta_{i,0}$.
+\end{enumerate}
+
+\subsection{Catena del polso}
+
+Consideriamo in particolare il tratto prossimale della struttura, ossia quello corrispondente a polso e avambraccio, il quale è governato dalla sequenza di trasformazioni ${}^0\boldsymbol{T}_2 = {}^0\boldsymbol{T}_1\,{}^1\boldsymbol{T}_2$ (vedi Figura~\ref{fig:joints_chain}), che definisce l'orientamento globale del palmo rispetto alla tastiera.
+Pertanto una variazione di $q_1$ o $q_2$ modifica la posa globale di tutti e cinque gli end-effector, mentre i giunti appartenenti a un singolo ramo influenzano direttamente soltanto il corrispondente end-effector.
+Poiché dal giunto $J_2$ si originano cinque rami orientati in direzioni differenti, le connessioni fisiche divergenti (i metacarpi) sono gestite introducendo cinque \textit{frame} di attacco $\mathcal F_{B_k}$, solidali al corpo centrale. 
+
+Le cinque funzioni possono essere raccolte in:
+\[
+    \mathcal{K}(\mathbf q)=
+    \left[
+        {}^0\boldsymbol{T}_{E_1},
+        {}^0\boldsymbol{T}_{E_2},
+        {}^0\boldsymbol{T}_{E_3},
+        {}^0\boldsymbol{T}_{E_4},
+        {}^0\boldsymbol{T}_{E_5}
+    \right]
+\]
+dove
+\[
+    \mathbf q = [q_1,q_2,q_3,\ldots,q_{20}]^\top
+\]
+Tali trasformazioni, puramente costanti, esprimono la posizione e l'orientamento della base di ciascun dito rispetto a $J_2$:
+\begin{equation}
+    {}^2\boldsymbol{T}_{B_k}=
+    \begin{bmatrix}
+    {}^2\boldsymbol{R}_{B_k} & {}^2p_{B_k}\\ 
+    \boldsymbol{0} & 1
+    \end{bmatrix},
+    \qquad k=1,\ldots,5
+\end{equation}
+Grazie a questa scomposizione topologica, la posa globale di ciascun \textit{end-effector} (\textit{finger-tip}) rispetto al sistema di riferimento della base può essere ricavata analiticamente. 
+
+Indicando con $\mathcal I_k$ l'insieme ordinato dei giunti appartenenti allo specifico ramo $k$-esimo, la cinematica diretta di ogni singolo dito assume una formulazione matriciale compatta:
+\begin{equation}
+    {}^0\boldsymbol{T}_{E_k} = {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_{B_k} \prod_{i\in\mathcal I_k}{}^{i-1}\boldsymbol{T}_i\,{}^{i_{\rm end}}\boldsymbol{T}_{E_k}, \qquad k=1,\ldots,5
+\end{equation}
+Sviluppando tale formulazione per le singole ramificazioni, si ottengono le espressioni esplicite:
+\begin{align*}
+    \text{mignolo:} \qquad & {}^0\boldsymbol{T}_{E_1} = {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_{B_1}\,{}^{B_1}\boldsymbol{T}_3\,{}^3\boldsymbol{T}_4\,{}^4\boldsymbol{T}_5\,{}^5\boldsymbol{T}_6\,{}^6\boldsymbol{T}_{E_1} \\
+    \text{anulare:} \qquad & {}^0\boldsymbol{T}_{E_2} = {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_{B_2}\,{}^{B_2}\boldsymbol{T}_7\,{}^7\boldsymbol{T}_8\,{}^8\boldsymbol{T}_9\,{}^9\boldsymbol{T}_{E_2} \\
+    \text{medio:} \qquad & {}^0\boldsymbol{T}_{E_3} = {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_{B_3}\,{}^{B_3}\boldsymbol{T}_{10}\,{}^{10}\boldsymbol{T}_{11}\,{}^{11}\boldsymbol{T}_{12}\,{}^{12}\boldsymbol{T}_{E_3} \\
+    \text{indice:} \qquad & {}^0\boldsymbol{T}_{E_4} = {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_{B_4}\,{}^{B_4}\boldsymbol{T}_{13}\,{}^{13}\boldsymbol{T}_{14}\,{}^{14}\boldsymbol{T}_{15}\,{}^{15}\boldsymbol{T}_{E_4} \\
+    \text{pollice:} \qquad & {}^0\boldsymbol{T}_{E_5} = {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_{B_5}\,{}^{B_5}\boldsymbol{T}_{16}\,{}^{16}\boldsymbol{T}_{17}\,{}^{17}\boldsymbol{T}_{18}\,{}^{18}\boldsymbol{T}_{19}\,{}^{19}\boldsymbol{T}_{20}\,{}^{20}\boldsymbol{T}_{E_5}
+\end{align*}
+
+\paragraph{Matrici elementari.}
+Le rotazioni elementari sono:
+\[
+    \boldsymbol{R}_x(\alpha)=
+    \begin{bmatrix}
+        1&0&0\\0&\cos\alpha&-\sin\alpha\\0&\sin\alpha&\cos\alpha
+    \end{bmatrix}
+    \quad 
+    \boldsymbol{R}_y(\beta)=
+    \begin{bmatrix}
+        \cos\beta&0&\sin\beta\\0&1&0\\-\sin\beta&0&\cos\beta
+    \end{bmatrix}
+    \quad
+    \boldsymbol{R}_z(\gamma)=
+    \begin{bmatrix}
+        \cos\gamma&-\sin\gamma&0\\
+        \sin\gamma&\cos\gamma&0\\0&0&1
+    \end{bmatrix}
+\]
+Mentre, le traslazioni sono:
+\[
+    \boldsymbol{T}_x(a)=
+    \begin{bmatrix}1&0&0&a\\0&1&0&0\\0&0&1&0\\0&0&0&1\end{bmatrix}
+    \qquad
+    \boldsymbol{T}_y(b)=
+    \begin{bmatrix}1&0&0&0\\0&1&0&b\\0&0&1&0\\0&0&0&1\end{bmatrix}
+    \qquad
+    \boldsymbol{T}_z(d)=
+    \begin{bmatrix}1&0&0&0\\0&1&0&0\\0&0&1&d\\0&0&0&1\end{bmatrix}
+\]
+
+\subsection{Catena cinematica del mignolo}
+\label{subsec:little_chain}
+
+La prima catena seriale che consideriamo è:
+\[
+    J_3\rightarrow J_4\rightarrow J_5\rightarrow J_6
+\]
+Il collegamento con il corpo centrale avviene mediante il frame del giunto $J_2$. 
+I parametri DH sono riportati nella Tabella~\ref{tab:dh_3_6}.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline 
+        $i$&$a_i$&$\alpha_i$&$d_i$&$\vartheta_i$\\ \hline \hline
+        3&$L_{34}$&$-\frac\pi2$&$d_3$&$q_3+\vartheta_{3,0}$\\
+        4&0&0&$d_4$&$q_4+\vartheta_{4,0}$\\
+        5&$L_{56}$&$0$&$d_5$&$q_5+\vartheta_{5,0}$\\
+        6&$L_{6E_1}$&$0$&$d_6$&$q_6+\vartheta_{6,0}$\\ \hline
+    \end{tabular}
+    \caption{Parametri DH della catena $J_3$--$J_6$.}
+    \label{tab:dh_3_6}
+\end{table}
+
+Le trasformazioni sono:
+\begin{align*}
+{}^2\boldsymbol{T}_3&=\boldsymbol{R}_z(\vartheta_3)\boldsymbol{T}_z(d_3)\boldsymbol{T}_x(a_3)\boldsymbol{R}_x(\alpha_3) \\
+{}^3\boldsymbol{T}_4&=\boldsymbol{R}_z(\vartheta_4)\boldsymbol{T}_z(d_4)\boldsymbol{T}_x(a_4)\boldsymbol{R}_x(\alpha_4) \\
+{}^4\boldsymbol{T}_5&=\boldsymbol{R}_z(\vartheta_5)\boldsymbol{T}_z(d_5)\boldsymbol{T}_x(a_5)\boldsymbol{R}_x(\alpha_5) \\
+{}^5\boldsymbol{T}_6&=\boldsymbol{R}_z(\vartheta_6)\boldsymbol{T}_z(d_6)\boldsymbol{T}_x(a_6)\boldsymbol{R}_x(\alpha_6)
+\end{align*}
+Ponendo $c_i=\cos\vartheta_i$ e $s_i=\sin\vartheta_i$, le matrici omogenee sono:
+\begin{align*}
+{}^2\boldsymbol{T}_3&=
+\begin{bmatrix}c_3&0&-s_3&a_3c_3\\s_3&0&c_3&a_3s_3\\0&-1&0&d_3\\0&0&0&1\end{bmatrix}
+&&{}^3\boldsymbol{T}_4=
+\begin{bmatrix}c_4&-s_4&0&a_4c_4\\s_4&c_4&0&a_4s_4\\0&0&1&d_4\\0&0&0&1\end{bmatrix}
+\\
+{}^4\boldsymbol{T}_5&=
+\begin{bmatrix}c_5&-s_5&0&a_5c_5\\s_5&c_5&0&a_5s_5\\0&0&1&d_5\\0&0&0&1\end{bmatrix}
+&&{}^5\boldsymbol{T}_6=
+\begin{bmatrix}c_6&-s_6&0&a_6c_6\\s_6&c_6&0&a_6s_6\\0&0&1&d_6\\0&0&0&1\end{bmatrix}
+\end{align*}
+La funzione di cinematica diretta per la posa dell'end effector si ottiene tramite la seguente trasformazione:
+\begin{equation}
+    {}^0\boldsymbol{T}_{E_1}(\mathbf q_1)=
+    {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_3(q_3)\,{}^3\boldsymbol{T}_4(q_4)\,
+    {}^4\boldsymbol{T}_5(q_5)\,{}^5\boldsymbol{T}_6(q_6)\,{}^6\boldsymbol{T}_{E_1}
+\end{equation}
+con \( \mathbf q_1=[q_3\;q_4\;q_5\;q_6]^\top \).
+
+\subsection{Catene delle dita intermedie}
+
+Le catene cinematiche relative alle tre dita intermedie (anulare, medio e indice) possono essere trattate in modo analogo, essendo caratterizzate dalla medesima topologia articolare e parametrizzazione geometrica. 
+Nello specifico, la seconda, la terza e la quarta catena si sviluppano secondo le seguenti sequenze:
+\[
+    J_7    \rightarrow J_8    \rightarrow J_9
+    \qquad
+    J_{10} \rightarrow J_{11} \rightarrow J_{12}
+    \qquad
+    J_{13} \rightarrow J_{14} \rightarrow J_{15}
+\]
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        $i$&$a_i$&$\alpha_i$&$d_i$&$\vartheta_i$\\ \hline \hline
+        7&$L_{78}$&$-\frac\pi2$&$d_7$&$q_7+\vartheta_{7,0}$\\
+        8&$L_{89}$&$0$&$d_8$&$q_8+\vartheta_{8,0}$\\
+        9&$L_{9E_2}$&$0$&$d_9$&$q_9+\vartheta_{9,0}$\\
+        \hline
+    \end{tabular}
+    \caption{Parametri DH della catena $J_7$--$J_9$.}
+    \label{tab:dh_7_9}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        $i$&$a_i$&$\alpha_i$&$d_i$&$\vartheta_i$\\ \hline \hline
+        10&$L_{10,11}$&$-\frac\pi2$&$d_{10}$&$q_{10}+\vartheta_{10,0}$\\
+        11&$L_{11,12}$&$0$&$d_{11}$&$q_{11}+\vartheta_{11,0}$\\
+        12&$L_{12E_3}$&$0$&$d_{12}$&$q_{12}+\vartheta_{12,0}$\\
+        \hline
+    \end{tabular}
+    \caption{Parametri DH della catena $J_{10}$--$J_{12}$.}
+    \label{tab:dh_10_12}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        $i$&$a_i$&$\alpha_i$&$d_i$&$\vartheta_i$\\ \hline \hline
+        13&$L_{13,14}$&$-\frac\pi2$&$d_{13}$&$q_{13}+\vartheta_{13,0}$\\
+        14&$L_{14,15}$&$0$&$d_{14}$&$q_{14}+\vartheta_{14,0}$\\
+        15&$L_{15E_4}$&$0$&$d_{15}$&$q_{15}+\vartheta_{15,0}$\\
+        \hline
+    \end{tabular}
+    \caption{Parametri DH della catena $J_{13}$--$J_{15}$.}
+    \label{tab:dh_13_15}
+\end{table}
+
+Poiché gli assi consecutivi sono paralleli, le trasformazioni sono:
+\begin{align*}
+    {}^2\boldsymbol{T}_7&= \boldsymbol{R}_z(\vartheta_7)\boldsymbol{T}_z(d_7)\boldsymbol{T}_x(a_7)\boldsymbol{R}_x(\alpha_7) \\
+    {}^7\boldsymbol{T}_8&= \boldsymbol{R}_z(\vartheta_8)\boldsymbol{T}_z(d_8)\boldsymbol{T}_x(a_8)\boldsymbol{R}_x(\alpha_8) \\
+    {}^8\boldsymbol{T}_9&= \boldsymbol{R}_z(\vartheta_9)\boldsymbol{T}_z(d_9)\boldsymbol{T}_x(a_9)\boldsymbol{R}_x(\alpha_9) \\[2ex]
+    {}^2\boldsymbol{T}_{10}&= \boldsymbol{R}_z(\vartheta_{10})\boldsymbol{T}_z(d_{10})\boldsymbol{T}_x(a_{10})\boldsymbol{R}_x(\alpha_{10}) \\
+    {}^{10}\boldsymbol{T}_{11}&= \boldsymbol{R}_z(\vartheta_{11})\boldsymbol{T}_z(d_{11})\boldsymbol{T}_x(a_{11})\boldsymbol{R}_x(\alpha_{11}) \\
+    {}^{11}\boldsymbol{T}_{12}&= \boldsymbol{R}_z(\vartheta_{12})\boldsymbol{T}_z(d_{12})\boldsymbol{T}_x(a_{12})\boldsymbol{R}_x(\alpha_{12}) \\[2ex]
+    {}^2\boldsymbol{T}_{13}&= \boldsymbol{R}_z(\vartheta_{13})\boldsymbol{T}_z(d_{13})\boldsymbol{T}_x(a_{13})\boldsymbol{R}_x(\alpha_{13}) \\
+    {}^{13}\boldsymbol{T}_{14}&= \boldsymbol{R}_z(\vartheta_{14})\boldsymbol{T}_z(d_{14})\boldsymbol{T}_x(a_{14})\boldsymbol{R}_x(\alpha_{14}) \\
+    {}^{14}\boldsymbol{T}_{15}&= \boldsymbol{R}_z(\vartheta_{15})\boldsymbol{T}_z(d_{15})\boldsymbol{T}_x(a_{15})\boldsymbol{R}_x(\alpha_{15})
+\end{align*}
+In forma matriciale:
+\begin{align*}
+    {}^2\boldsymbol{T}_7&=
+    \begin{bmatrix}c_7&0&-s_7&a_7c_7\\s_7&0&c_7&a_7s_7\\0&-1&0&d_7\\0&0&0&1\end{bmatrix}
+    {}^7\boldsymbol{T}_8=
+    \begin{bmatrix}c_8&-s_8&0&a_8c_8\\s_8&c_8&0&a_8s_8\\0&0&1&d_8\\0&0&0&1\end{bmatrix}
+    {}^8\boldsymbol{T}_9=
+    \begin{bmatrix}c_9&-s_9&0&a_9c_9\\s_9&c_9&0&a_9s_9\\0&0&1&d_9\\0&0&0&1\end{bmatrix}
+    \\
+    {}^2\boldsymbol{T}_{10}&=
+    \begin{bmatrix}c_{10}&-s_{10}&0&a_{10}c_{10}\\s_{10}&c_{10}&0&a_{10}s_{10}\\0&0&1&d_{10}\\0&0&0&1\end{bmatrix}
+    {}^{10}\boldsymbol{T}_{11}=
+    \begin{bmatrix}c_{11}&-s_{11}&0&a_{11}c_{11}\\s_{11}&c_{11}&0&a_{11}s_{11}\\0&0&1&d_{11}\\0&0&0&1\end{bmatrix}
+    {}^{11}\boldsymbol{T}_{12}=
+    \begin{bmatrix}c_{12}&-s_{12}&0&a_{12}c_{12}\\s_{12}&c_{12}&0&a_{12}s_{12}\\0&0&1&d_{12}\\0&0&0&1\end{bmatrix}
+    \\
+    {}^2\boldsymbol{T}_{13}&=
+    \begin{bmatrix}c_{13}&-s_{13}&0&a_{13}c_{13}\\s_{13}&c_{13}&0&a_{13}s_{13}\\0&0&1&d_{13}\\0&0&0&1\end{bmatrix}
+    {}^{13}\boldsymbol{T}_{14}=
+    \begin{bmatrix}c_{14}&-s_{14}&0&a_{14}c_{14}\\s_{14}&c_{14}&0&a_{14}s_{14}\\0&0&1&d_{14}\\0&0&0&1\end{bmatrix}
+    {}^{14}\boldsymbol{T}_{15}=
+    \begin{bmatrix}c_{15}&-s_{15}&0&a_{15}c_{15}\\s_{15}&c_{15}&0&a_{15}s_{15}\\0&0&1&d_{15}\\0&0&0&1\end{bmatrix}
+\end{align*}
+Le rispettive funzioni di cinematica diretta sono:
+\begin{align}
+    {}^0\boldsymbol{T}_{E_2}(\mathbf q_2)&=
+    {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_7(q_7)\,{}^7\boldsymbol{T}_8(q_8)\,
+    {}^8\boldsymbol{T}_9(q_9)\,{}^9\boldsymbol{T}_{E_2}
+    &\qquad
+    \mathbf q_2&=[q_7\;q_8\;q_9]^\top
+    \\
+    {}^0\boldsymbol{T}_{E_3}(\mathbf q_3)&=
+    {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_{10}(q_{10})\,{}^{10}\boldsymbol{T}_{11}(q_{11})\,
+    {}^{11}\boldsymbol{T}_{12}(q_{12})\,{}^{12}\boldsymbol{T}_{E_3}
+    &\qquad
+    \mathbf q_3&=[q_{10}\;q_{11}\;q_{12}]^\top
+    \\
+    {}^0\boldsymbol{T}_{E_4}(\mathbf q_4)&=
+    {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_{13}(q_{13})\,{}^{13}\boldsymbol{T}_{14}(q_{14})\,
+    {}^{14}\boldsymbol{T}_{15}(q_{15})\,{}^{15}\boldsymbol{T}_{E_4},
+    &\qquad
+    \mathbf q_4&=[q_{13}\;q_{14}\;q_{15}]^\top
+\end{align}
+
+\subsection{Catena del pollice}
+
+La quinta e ultima catena che consideriamo è quella del pollice:
+\[
+    J_{16}\rightarrow J_{17}\rightarrow J_{18}\rightarrow J_{19}\rightarrow J_{20}
+\]
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    $i$&$a_i$&$\alpha_i$&$d_i$&$\vartheta_i$\\ \hline \hline
+    16&$L_{16,17}$&$-\frac\pi2$&$d_{16}$&$q_{16}+\vartheta_{16,0}$\\
+    17&0&$+\frac\pi2$&$d_{17}$&$q_{17}+\vartheta_{17,0}$\\
+    18&0&$-\frac\pi2$&$d_{18}$&$q_{18}+\vartheta_{18,0}$\\
+    19&$L_{19,20}$&$+\frac\pi2$&$d_{19}$&$q_{19}+\vartheta_{19,0}$\\
+    20&$L_{20E_5}$&$0$&$d_{20}$&$q_{20}+\vartheta_{20,0}$\\
+    \hline
+    \end{tabular}
+    \caption{Parametri DH della catena $J_{16}$--$J_{20}$.}
+    \label{tab:dh_16_20}
+\end{table}
+
+Le trasformazioni sono:
+\begin{align*}
+{}^2\boldsymbol{T}_{16}&= \boldsymbol{R}_z(\vartheta_{16})\boldsymbol{T}_z(d_{16})\boldsymbol{T}_x(a_{16})\boldsymbol{R}_x(\alpha_{16})
+\\
+{}^{16}\boldsymbol{T}_{17}&= \boldsymbol{R}_z(\vartheta_{17})\boldsymbol{T}_z(d_{17})\boldsymbol{T}_x(a_{17})\boldsymbol{R}_x(\alpha_{17})
+\\
+{}^{17}\boldsymbol{T}_{18}&=\boldsymbol{R}_z(\vartheta_{18})\boldsymbol{T}_z(d_{18})\boldsymbol{T}_x(a_{18})\boldsymbol{R}_x(\alpha_{18})
+\\
+{}^{18}\boldsymbol{T}_{19}&=\boldsymbol{R}_z(\vartheta_{19})\boldsymbol{T}_z(d_{19})\boldsymbol{T}_x(a_{19})\boldsymbol{R}_x(\alpha_{19})
+\\
+{}^{19}\boldsymbol{T}_{20}&=\boldsymbol{R}_z(\vartheta_{20})\boldsymbol{T}_z(d_{20})\boldsymbol{T}_x(a_{20})\boldsymbol{R}_x(\alpha_{20})
+\end{align*}
+Le matrici elementari sono:
+\begin{align*}
+{}^2\boldsymbol{T}_{16}=
+\begin{bmatrix}c_{16}&0&-s_{16}&a_{16}c_{16}\\s_{16}&0&c_{16}&a_{16}s_{16}\\0&-1&0&d_{16}\\0&0&0&1\end{bmatrix}
+\qquad
+{}^{16}\boldsymbol{T}_{17}=
+\begin{bmatrix}c_{17}&0&s_{17}&a_{17}c_{17}\\s_{17}&0&-c_{17}&a_{17}s_{17}\\0&1&0&d_{17}\\0&0&0&1\end{bmatrix}
+\\
+{}^{17}\boldsymbol{T}_{18}=
+\begin{bmatrix}c_{18}&0&-s_{18}&a_{18}c_{18}\\s_{18}&0&c_{18}&a_{18}s_{18}\\0&-1&0&d_{18}\\0&0&0&1\end{bmatrix}
+\qquad
+{}^{18}\boldsymbol{T}_{19}=
+\begin{bmatrix}c_{19}&-s_{19}&0&a_{19}c_{19}\\s_{19}&c_{19}&0&a_{19}s_{19}\\0&0&1&d_{19}\\0&0&0&1\end{bmatrix}
+\\ 
+{}^{19}\boldsymbol{T}_{20}=
+\begin{bmatrix}c_{20}&-s_{20}&0&a_{20}c_{20}\\s_{20}&c_{20}&0&a_{20}s_{20}\\0&0&1&d_{20}\\0&0&0&1\end{bmatrix}
+\end{align*}
+La funzione di cinematica diretta è:
+\begin{equation}
+    {}^0\boldsymbol{T}_{E_5}(\mathbf q_5)=
+    {}^0\boldsymbol{T}_2\,{}^2\boldsymbol{T}_{16}(q_{16})\,{}^{16}\boldsymbol{T}_{17}(q_{17})\,
+    {}^{17}\boldsymbol{T}_{18}(q_{18})\,{}^{18}\boldsymbol{T}_{19}(q_{19})\,
+    {}^{19}\boldsymbol{T}_{20}(q_{20})\,{}^{20}\boldsymbol{T}_{E_5}
+\end{equation}
+con \( \mathbf q_5=[q_{16}\;q_{17}\;q_{18}\;q_{19}\;q_{20}]^\top \).
+
+\subsection{Spazio dei giunti}
+
+La funzione cinematica diretta definisce una mappatura non lineare $\boldsymbol{x}_e = \boldsymbol{k}(\boldsymbol{q})$ che lega lo \textit{spazio dei giunti} (o delle configurazioni) allo \textit{spazio operativo}. 
+Lo spazio dei giunti è definito dal vettore $\boldsymbol{q} \in \mathbb{R}^n$ delle variabili articolari, che nel caso di \textit{RoboLiszt} ha dimensione $n=20$. 
+Lo spazio operativo, invece, è descritto dal vettore 
+\[
+    \boldsymbol{x}_e =
+    \begin{bmatrix}
+        \boldsymbol{p}_e^\top \\
+        \boldsymbol{\omega}_e^\top
+    \end{bmatrix}
+    \in \mathbb{R}^m
+\]
+con $m \le 6$, il quale definisce la posa dell'organo terminale in termini di coordinate di posizione $\boldsymbol{p}_e$ e angoli di orientamento $\boldsymbol{\omega}_e$. 
+Questa distinzione è molto importante: mentre il controllo di basso livello agisce sullo spazio dei giunti, la pianificazione del compito (come il raggiungimento e la pressione di un tasto musicale) viene naturalmente formulata nello spazio operativo.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{workspace/joint_space_limits.png}
+    \caption[Rappresentazione dei limiti articolari nello spazio dei giunti per i 20 DoF del manipolatore.]
+    {Rappresentazione dei limiti articolari nello spazio dei giunti per i 20 gradi di libertà del manipolatore. 
+    Le barre piene indicano il range ammissibile per le variabili di giunto $q$, mentre le aree tratteggiate rappresentano gli angoli effettivi $\vartheta = q + \text{offset}$. 
+    Dal grafico emerge chiaramente come il mignolo ($J_3$-$J_6$, in blu) e soprattutto il pollice ($J_{16}$-$J_{20}$, in viola) siano caratterizzati da escursioni angolari fortemente asimmetriche rispetto alle dita intermedie. 
+    Ciò è il risultato di scelte puramente progettuali: al mignolo è stata assegnata una maggiore capacità di deviazione laterale alla base ($J_3$) per favorire l'espansione della mano, mentre l'intera catena cinematica del pollice è stata traslata e ruotata (evidente nei grandi offset di $J_{16}$ e $J_{18}$) per riprodurre il complesso movimento di opposizione rispetto al palmo.}
+    \label{fig:joint_space_limits}
+\end{figure}
+
+Un elemento fondamentale per la valutazione delle prestazioni del manipolatore è lo \textbf{spazio di lavoro} (\textit{workspace}), definito come il volume geometrico descritto dall'origine della terna utensile al variare di $\boldsymbol{q}$ entro i limiti meccanici imposti ($q_{im} \le q_i \le q_{iM}$). 
+All'interno di esso si distingue lo \textbf{spazio di lavoro raggiungibile}, che comprende tutti i punti dello spazio intercettabili dall'end-effector con almeno un orientamento, e lo \textbf{spazio di destrezza} (\textit{dexterous workspace}), un sottoinsieme più restrittivo in cui l'organo terminale può assumere orientamenti arbitrari.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.95\linewidth]{workspace/workspace_projections.png}
+    \caption[Proiezioni ortogonali nello spazio di lavoro raggiungibile dai cinque end-effector del manipolatore, ottenute tramite campionamento Monte Carlo.]
+    {Proiezioni ortogonali (X-Y, X-Z, Y-Z) dello spazio di lavoro raggiungibile dai cinque \textit{end-effector} del manipolatore, ottenute tramite campionamento Monte Carlo. 
+    Le aree evidenziano l'impronta spaziale di ciascun dito. 
+    Si osserva come le dita centrali (anulare, medio, indice) descrivano volumi di lavoro ampiamente sovrapposti e regolari. 
+    Al contrario, lo spazio operativo del pollice (viola) si sviluppa trasversalmente e internamente rispetto agli altri, mentre quello del mignolo (blu) copre un'area di estensione laterale significativamente più ampia.}
+    \label{fig:workspace_projections}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Cinematica differenziale}
+
+Mentre l'analisi della cinematica diretta e inversa si concentra sul legame posizionale tra le variabili articolari e la posa dell'organo terminale, la cinematica differenziale ha l'obiettivo di determinare la relazione lineare che intercorre tra le velocità ai giunti e i conseguenti atti di moto del manipolatore.
+Nello specifico, essa esprime la velocità lineare $\dot{\boldsymbol{p}}_e$ e la velocità angolare $\boldsymbol{\omega}_e$ dell'organo terminale in funzione del vettore delle velocità articolari $\dot{\boldsymbol{q}}$.
+
+\subsection{Jacobiano analitico e geometrico}
+
+Tale mappatura è governata da un operatore matriciale, dipendente dalla configurazione corrente del robot, denominato \textbf{Jacobiano geometrico}. 
+In forma compatta, l'equazione fondamentale della cinematica differenziale può essere scritta come:
+\begin{equation}
+    \boldsymbol{v}_e = \begin{bmatrix} \dot{\boldsymbol{p}}_e \\ \boldsymbol{\omega}_e \end{bmatrix} = \boldsymbol{J}(\boldsymbol{q})\dot{\boldsymbol{q}}
+\end{equation}
+dove $\boldsymbol{J}(\boldsymbol{q})$ è una matrice di dimensioni $6 \times n$ (con $n$ pari al numero di gradi di libertà del sistema), a sua volta composta da due sottomatrici $\boldsymbol{J}_P$ e $\boldsymbol{J}_O$ di dimensioni $3 \times n$, le quali descrivono rispettivamente i contributi alle traslazioni e alle rotazioni.
+
+Nella modellazione robotica, è essenziale operare una distinzione tra lo Jacobiano geometrico e lo \textbf{Jacobiano analitico}. 
+Il primo fa diretto riferimento alle grandezze fisiche vettoriali dello spazio cartesiano (come la velocità angolare $\boldsymbol{\omega}_e$), mentre il secondo si ottiene per differenziazione analitica della funzione cinematica diretta qualora l'orientamento venga descritto tramite una rappresentazione minima (come gli angoli di Eulero). 
+Essendo la velocità angolare un vettore libero non integrabile e non coincidendo con la derivata temporale diretta degli angoli operativi, i due Jacobiani differiscono intrinsecamente dal punto di vista matematico.
+
+La formulazione della matrice Jacobiana costituisce lo strumento analitico principale per la caratterizzazione avanzata di un manipolatore. 
+Essa è infatti imprescindibile per l'individuazione e lo studio delle singolarità cinematiche, per l'analisi e lo sfruttamento della ridondanza strutturale e per lo sviluppo di algoritmi numerici di inversione cinematica.
+Inoltre, grazie al principio di dualità cineto-statica, lo Jacobiano permette di stabilire il legame diretto tra le forze applicate all'\textit{end-effector} e le relative coppie sviluppate ai giunti, fungendo da ponte fondamentale per la derivazione delle equazioni del moto e la sintesi delle architetture di controllo nello spazio operativo.
+
+\subsection{Calcolo sistematico dello Jacobiano geometrico}
+
+Al fine di calcolare operativamente la matrice Jacobiana $\boldsymbol{J}(\boldsymbol{q})$ di dimensioni $6 \times n$, risulta conveniente partizionarla in $n$ vettori colonna di dimensione $6 \times 1$:
+\[
+    \boldsymbol{J} = 
+    \begin{bmatrix} 
+        \boldsymbol{J}_1 & \boldsymbol{J}_2 & \dots & \boldsymbol{J}_n 
+    \end{bmatrix} 
+    = 
+    \begin{bmatrix} 
+        \boldsymbol{\phi}_{P1} & \boldsymbol{\phi}_{P2} & \dots & \boldsymbol{\phi}_{Pn} \\ 
+        \boldsymbol{\phi}_{O1} & \boldsymbol{\phi}_{O2} & \dots & \boldsymbol{\phi}_{On} 
+    \end{bmatrix}
+\]
+dove il termine $\dot{q}_i \boldsymbol{\phi}_{Pi}$ rappresenta il contributo del singolo giunto $i$-esimo alla velocità lineare $\dot{\boldsymbol{p}}_e$ dell'organo terminale, mentre $\dot{q}_i \boldsymbol{\phi}_{Oi}$ ne esprime il contributo alla velocità angolare $\boldsymbol{\omega}_e$. 
+
+Essendo l'architettura del manipolatore \textit{RoboLiszt} costituita esclusivamente da giunti di tipo rotoidale, la variabile articolare coincide con l'angolo di rotazione ($q_i = \vartheta_i$). 
+Per un giunto rotoidale, l'atto di moto impresso all'organo terminale è descritto dalle seguenti relazioni vettoriali:
+\begin{equation}
+    \begin{bmatrix} 
+        \boldsymbol{\phi}_{Pi} \\ \boldsymbol{\phi}_{Oi} 
+    \end{bmatrix} 
+    = 
+    \begin{bmatrix} 
+        \boldsymbol{z}_{i-1} \times (\boldsymbol{p}_e - \boldsymbol{p}_{i-1}) \\ \boldsymbol{z}_{i-1} 
+    \end{bmatrix}
+\end{equation}
+Tale espressione consente di calcolare lo Jacobiano in maniera algoritmica e sistematica estraendo gli elementi necessari direttamente dalle matrici di trasformazione omogenea ${}^0\boldsymbol{T}_i$ calcolate durante la cinematica diretta:
+\begin{itemize}
+    \item $\boldsymbol{z}_{i-1}$ è il versore dell'asse di rotazione del giunto, corrispondente alla terza colonna della matrice di rotazione ${}^0\boldsymbol{R}_{i-1}$;
+    \item $\boldsymbol{p}_{i-1}$ è il vettore posizione dell'origine della terna del giunto, corrispondente ai primi tre elementi della quarta colonna della matrice ${}^0\boldsymbol{T}_{i-1}$;
+    \item $\boldsymbol{p}_e$ è la posizione attuale dell'organo terminale (\textit{Tool Center Point}).
+\end{itemize}
+Infine, qualora si renda necessario esprimere lo Jacobiano in un sistema di riferimento differente rispetto alla terna fissa di base (ad esempio, una terna $\boldsymbol{u}$ solidale alla tastiera del pianoforte), è sufficiente applicare una trasformazione ortogonale a blocchi definita dalla relativa matrice di rotazione $\boldsymbol{R}^u$:
+\begin{equation}
+    \boldsymbol{J}^u = 
+    \begin{bmatrix} 
+        \boldsymbol{R}^u & \boldsymbol{O} \\ 
+        \boldsymbol{O} & \boldsymbol{R}^u 
+    \end{bmatrix} 
+    \boldsymbol{J}
+\end{equation}
+
+\paragraph{Estensione alle strutture ramificate.}
+
+Le equazioni canoniche dello Jacobiano sono formulate per catene cinematiche seriali semplici. 
+Nel caso della mano \textit{RoboLiszt}, caratterizzata da una topologia ad albero, non esiste una singola matrice Jacobiana globale, bensì \emph{cinque Jacobiani distinti}, uno per ciascun dito. 
+
+Dato il vettore completo delle coordinate articolari $\boldsymbol{q} \in \mathbb{R}^{20}$, lo Jacobiano $\boldsymbol{J}_k(\boldsymbol{q})$ relativo all'\textit{end-effector} $k$-esimo avrà dimensioni $6 \times 20$. 
+Tuttavia, le colonne corrispondenti a giunti che non appartengono al percorso cinematico tra la base e l'estremità del dito in esame saranno identicamente nulle, poiché il moto di tali giunti non influenza la posa dell'\textit{end-effector} $k$-esimo. 
+Le colonne non nulle saranno calcolate iterativamente applicando l'operatore prodotto vettoriale unicamente ai nodi appartenenti alla ramificazione attiva.
+
+Formalmente, lo Jacobiano geometrico $\boldsymbol{J}_k(\boldsymbol{q}) \in \mathbb{R}^{6 \times 20}$ relativo al dito $k$-esimo è composto da 20 vettori colonna:
+\[
+    \boldsymbol{J}_k = \begin{bmatrix} \boldsymbol{j}_1 & \boldsymbol{j}_2 & \dots & \boldsymbol{j}_{20} \end{bmatrix}
+\]
+Essendo tutti i giunti della struttura di tipo rotoidale, la generica colonna $i$-esima assume la forma esplicita:
+\[
+    \boldsymbol{j}_i = 
+    \begin{cases} 
+        \begin{bmatrix} 
+            \boldsymbol{z}_{\pi(i)} \times (\boldsymbol{p}_{e,k} - \boldsymbol{p}_{\pi(i)}) \\
+            \boldsymbol{z}_{i-1} 
+        \end{bmatrix}
+        \quad \quad & \text{se } i \in \Omega_k \\
+        \boldsymbol{0}_{6 \times 1} & \text{se } i \notin \Omega_k 
+    \end{cases}
+\]
+dove $\Omega_k$ rappresenta l'insieme degli indici dei giunti attivi per la ramificazione $k$-esima, $\boldsymbol{p}_{e,k}$ è la posizione del \textit{Tool Center Point} del dito, $\boldsymbol{z}_{\pi(i)}$ è il versore dell'asse di rotazione e $\boldsymbol{p}_{\pi(i)}$ l'origine della terna locale, dove $\pi(i)$ è l'indice del giunto genitore di $i$: $\pi(i)=i-1$ lungo ciascuna catena, mentre $\pi(i)=2$ per il primo giunto di ciascun dito ($i=3,7,10,13,16$), poiché tutte le catene partono dalla terna del polso.
+
+A titolo esemplificativo, si consideri la catena cinematica dell'indice, la quale condivide con le altre dita i due gradi di libertà del polso ($i=1, 2$) e si sviluppa successivamente sulla propria ramificazione indipendente ($i=13, 14, 15$). In questo caso, l'insieme dei giunti attivi risulta $\Omega_{index} = \{1, 2, 13, 14, 15\}$. 
+L'equazione matriciale esplicita dello Jacobiano per l'indice diviene pertanto:
+\[
+    \boldsymbol{J}_{\text{index}}(\boldsymbol{q}) = 
+    \begin{bmatrix} 
+        \boldsymbol{j}_1 & \boldsymbol{j}_2 & \boldsymbol{0} & \dots & \boldsymbol{0} & \boldsymbol{j}_{13} & \boldsymbol{j}_{14} & \boldsymbol{j}_{15} & \boldsymbol{0} & \dots
+    \end{bmatrix}
+\]
+dove i blocchi nulli (corrispondenti alle colonne da 3 a 12 e da 16 a 20) annullano matematicamente il contributo di velocità delle restanti articolazioni (appartenenti a mignolo, anulare, medio e pollice).
+
+\subsection{Singolarità cinematiche}
+
+Una configurazione $\boldsymbol q$ si dice \textbf{singolare} quando lo Jacobiano $\boldsymbol J_k(\boldsymbol q)$ perde rango, ossia quando $\operatorname{rank}\boldsymbol J_k<\min(m,n_k)$. 
+In tali configurazioni l'end-effector non può muoversi in almeno una direzione dello spazio operativo, indipendentemente dalle velocità ai giunti, mentre nelle vicinanze di esse velocità articolari molto elevate producono atti di moto ridotti (le velocità richieste crescono come $1/\sigma_{\min}$). 
+Per il compito pianistico, che richiede traiettorie di pressione lungo la verticale, ciò è particolarmente critico.
+
+La vicinanza a una singolarità è misurata tramite la decomposizione ai valori singolari $\boldsymbol J_{P,k}=\boldsymbol U\boldsymbol\Sigma\boldsymbol V^\top$ e gli indici:
+\begin{equation}
+    w(\boldsymbol q)=\sqrt{\det\!\big(\boldsymbol J_{P,k}\boldsymbol J_{P,k}^\top\big)}=\prod_{j}\sigma_j,
+    \qquad
+    \kappa(\boldsymbol q)=\frac{\sigma_{\max}}{\sigma_{\min}}
+\end{equation}
+dove $w$ è la manipolabilità di Yoshikawa (volume dell'ellissoide di manipolabilità, Sezione~\ref{sec:manipulability_ellipsoids}) e $\kappa$ il numero di condizionamento.
+
+Per le dita intermedie (indice, medio, anulare: un giunto di abduzione e due di flessione) la sola posizione del polpastrello dipende da tre giunti, quindi $\boldsymbol J_P$ è quadrata e le singolarità sono le soluzioni di $\det\boldsymbol J_P=0$. 
+Se $\vartheta_{j}$ è l'angolo del giunto distale tra due assi paralleli consecutivi, si distinguono due casi:
+\begin{itemize}
+    \item \textbf{singolarità di confine}: dito completamente esteso o completamente flesso ($\sin\vartheta_j=0$), in cui i bracci sono allineati e la punta non può muoversi lungo la direzione del dito;
+    \item \textbf{singolarità interne}: polpastrello sull'asse di rotazione del primo giunto del dito, dove la sua rotazione non produce spostamento.
+\end{itemize}
+Nel pollice, la presenza di tre assi con torsioni $\pm\pi/2$ ($J_{16}$--$J_{19}$) introduce una singolarità di tipo \emph{polso sferico}, che si presenta quando due assi di rotazione si allineano, con conseguente perdita di un grado di libertà in orientamento. 
+Anche i due giunti del polso condividono questa proprietà: quando $\boldsymbol z_1$ e $\boldsymbol z_2$ sono allineati, uno dei due diventa ridondante.
+
+\subsection{Analisi della ridondanza}
+
+Un manipolatore è \textbf{ridondante} rispetto a un compito quando $n>m$, essendo $m$ la dimensione del compito; il grado di ridondanza è $n-m$. Considerando il solo posizionamento del polpastrello ($m=3$) e il solo ramo $k$, il numero di giunti coinvolti è $|\Omega_k|=2+n_k$ (polso incluso).
+
+\begin{table}
+    \centering
+    \renewcommand{\arraystretch}{1.2}
+    \begin{tabular}{lcccc}
+        \hline
+        \textbf{Dito} & $n_k$ & $|\Omega_k|$ & $|\Omega_k|-3$ (con polso) & $n_k-3$ (senza polso) \\ \hline \hline
+        Indice, medio, anulare & 3 & 5 & 2 & 0 \\
+        Mignolo & 4 & 6 & 3 & 1 \\
+        Pollice & 5 & 7 & 4 & 2 \\ \hline
+    \end{tabular}
+\end{table}
+
+Le dita intermedie, a polso bloccato, sono quindi non ridondanti: l'unica soluzione è isolata (a meno di configurazioni gomito-su/gomito-giù).
+Mignolo e pollice dispongono invece di gradi di libertà aggiuntivi, utili per l'abduzione e per il passaggio del pollice.
+
+Il polso è condiviso, perciò quando $r$ dita devono raggiungere simultaneamente un target di posizione (accordo), le equazioni di vincolo si impilano in $3r$ equazioni nei 20 giunti:
+\begin{equation}
+    \boldsymbol J_{\rm tot}=\begin{bmatrix}\boldsymbol J_{P,1}\\ \vdots\\ \boldsymbol J_{P,r}\end{bmatrix}\in\mathbb R^{3r\times 20},
+    \qquad \text{con } r=5:\; 15\ \text{vincoli},\; 20\ \text{giunti}
+\end{equation}
+Il sistema ha ridondanza globale pari a $5$, ma i due giunti del polso entrano in tutte le righe: sono il loro compromesso a determinare quanto bene le dita raggiungono i rispettivi target. 
+Il moto interno, che non altera le posizioni dei polpastrelli, è descritto dal nucleo $\mathcal N(\boldsymbol J_{\rm tot})$ e può essere sfruttato per ottimizzare un criterio secondario (distanza dai limiti articolari, manipolabilità), come mostrato nella sezione successiva.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Cinematica inversa}
+\label{sec:inverse_kinematics}
+
+Il problema della cinematica inversa consiste nel determinare le variabili di giunto $\boldsymbol q$ che realizzano una posizione desiderata dell'organo terminale, ossia nell'invertire la funzione $\boldsymbol x_e=\boldsymbol k(\boldsymbol q)$ introdotta precedentemente. 
+Nel caso di \textit{RoboLiszt} il compito è definito dalla posizione del polpastrello, $\boldsymbol p_{e,k}(\boldsymbol q)=\boldsymbol p_k^d\in\mathbb R^3$, riferita al sistema tastiera: il punto desiderato è il centro del tasto da premere, alla quota di sfioramento o di fondo corsa. L'orientamento del polpastrello non è vincolato.
+
+A differenza di un manipolatore antropomorfo a 6 DoF, la struttura ramificata non ammette in generale una soluzione in forma chiusa: i giunti $J_1$ e $J_2$ sono condivisi da tutte le dita, e i rami di mignolo e pollice sono ridondanti rispetto al compito di posizione. 
+Si adotta perciò un metodo numerico basato sullo Jacobiano, che sfrutta la cinematica differenziale già introdotta.
+
+\subsection{Inversione differenziale con smorzamento}
+
+Detto $\boldsymbol e=\boldsymbol p^d-\boldsymbol p_e(\boldsymbol q)$ l'errore di posizione, la relazione $\dot{\boldsymbol p}_e=\boldsymbol J_P(\boldsymbol q)\dot{\boldsymbol q}$ viene linearizzata attorno alla configurazione corrente e invertita iterativamente:
+\begin{equation}
+    \boldsymbol q_{h+1}=\boldsymbol q_h+\alpha\,\Delta\boldsymbol q_h,
+    \qquad
+    \Delta\boldsymbol q_h=\boldsymbol J^{\dagger}\boldsymbol e_h
+\end{equation}
+dove $\alpha\in(0,1]$ è il passo di integrazione. La pseudo-inversa di Moore--Penrose $\boldsymbol J^{\dagger}=\boldsymbol J^\top(\boldsymbol J\boldsymbol J^\top)^{-1}$ fornisce la soluzione a norma minima ma diverge in prossimità delle singolarità, dove $\sigma_{\min}(\boldsymbol J)\to 0$. Si utilizza quindi la \textbf{pseudo-inversa smorzata} (\textit{damped least squares}, metodo di Levenberg--Marquardt), che minimizza $\|\boldsymbol J\Delta\boldsymbol q-\boldsymbol e\|^2+\lambda^2\|\Delta\boldsymbol q\|^2$:
+\begin{equation}
+    \boldsymbol J^{\#}=\boldsymbol J^\top\left(\boldsymbol J\boldsymbol J^\top+\lambda^2\boldsymbol I\right)^{-1}
+    \label{eq:dls}
+\end{equation}
+Il fattore di smorzamento $\lambda$ limita le velocità articolari richieste vicino alle singolarità al prezzo di un errore residuo. Per non rallentare la convergenza lontano da esse, $\lambda$ viene reso adattativo:
+\begin{equation}
+    \lambda^2=\lambda_{\min}^2+\lambda_0^2\,\min\!\left(1,\left(\|\boldsymbol e\|/e_0\right)^2\right)
+\end{equation}
+cosicché lo smorzamento è pieno per errori grandi ($\|\boldsymbol e\|\ge e_0$) e quasi nullo in prossimità della soluzione, dove l'iterazione recupera convergenza rapida. L'algoritmo termina quando l'errore di ogni dito vincolato scende sotto la tolleranza $\varepsilon$ (nelle simulazioni $\varepsilon=0{,}1$~mm).
+
+\paragraph{Jacobiano utilizzato.} Lo Jacobiano $\boldsymbol J_P$ è calcolato analiticamente tramite la formula geometrica della Sezione precedente, valutata nel punto di controllo del polpastrello $\boldsymbol p_{e,k}$ (e non nell'origine della terna dell'ultimo giunto): lo Jacobiano e la funzione di cinematica diretta devono riferirsi allo stesso punto, altrimenti l'iterazione converge a un punto diverso da quello desiderato. La correttezza è stata verificata confrontando $\boldsymbol J_P$ con le differenze finite centrali di ${}^0\boldsymbol T_{E_k}$ per configurazioni casuali (scarto massimo dell'ordine di $10^{-11}$~m/rad).
+
+\subsection{Sfruttamento della ridondanza}
+
+Poiché per mignolo e pollice, e per il sistema impilato dell'accordo, $n>m$, l'insieme delle soluzioni è una varietà di dimensione $n-m$. Il moto interno, che non altera la posizione dei polpastrelli, è descritto dal proiettore sul nucleo $\boldsymbol P=\boldsymbol I-\boldsymbol J^{\#}\boldsymbol J$. L'aggiornamento diventa
+\begin{equation}
+    \Delta\boldsymbol q=\boldsymbol J^{\#}\boldsymbol e+\boldsymbol P\,\Delta\boldsymbol q_0,
+    \qquad
+    \Delta\boldsymbol q_0=-k_0\,\boldsymbol W_q\,(\boldsymbol q-\boldsymbol q_{\rm rest})
+\end{equation}
+dove $\boldsymbol q_{\rm rest}$ è una postura di riferimento (la postura di partenza del movimento, che garantisce traiettorie continue) e $\boldsymbol W_q$ normalizza ciascun giunto rispetto alla propria escursione. Il termine secondario minimizza lo scostamento dalla postura di riferimento senza degradare l'errore di posizione.
+
+Per distribuire il moto tra i giunti, la pseudo-inversa può essere \textbf{pesata}: con $\boldsymbol W=\mathrm{diag}(w_i)$ si pone $\boldsymbol J^{\#}_W=\boldsymbol W^{-1}\boldsymbol J^\top(\boldsymbol J\boldsymbol W^{-1}\boldsymbol J^\top+\lambda^2\boldsymbol I)^{-1}$, e un peso elevato rende il giunto corrispondente più ``costoso'' da muovere. Questo permette, per esempio, di limitare l'intervento del polso condiviso quando si preme un tasto con un solo dito.
+
+\subsection{Limiti articolari e vincoli unilaterali}
+
+I limiti $q_{im}\le q_i\le q_{iM}$ sono gestiti con un insieme di giunti attivi: se il passo calcolato porta un giunto oltre il proprio limite, quel giunto viene congelato (la relativa colonna è esclusa dall'inversione) e il passo è ricalcolato con i giunti rimanenti; ciò evita lo stallo tipico del semplice troncamento.
+
+Nell'esecuzione di un tasto le dita che non suonano non devono toccare i tasti adiacenti. Tale requisito è un vincolo \emph{unilaterale} sulla quota del polpastrello, $z_{e,j}\ge z_{\min}$, che viene aggiunto al compito solo quando risulta violato (insieme di vincoli attivi): finché il dito è al di sopra della soglia non limita il moto, e quando la soglia viene raggiunta impone $z_{e,j}=z_{\min}$ sulla sola componente verticale.
+
+\subsection{Cinematica inversa multi-catena}
+
+Per eseguire un accordo i polpastrelli di $r$ dita devono raggiungere contemporaneamente i rispettivi tasti. Gli errori e gli Jacobiani dei rami interessati si impilano:
+\begin{equation}
+    \boldsymbol e_{\rm tot}=\begin{bmatrix}\boldsymbol e_1\\ \vdots\\ \boldsymbol e_r\end{bmatrix}\in\mathbb R^{3r},
+    \qquad
+    \boldsymbol J_{\rm tot}=\begin{bmatrix}\boldsymbol J_{P,1}\\ \vdots\\ \boldsymbol J_{P,r}\end{bmatrix}\in\mathbb R^{3r\times 20}
+\end{equation}
+e l'iterazione~\eqref{eq:dls} è applicata a $\boldsymbol J_{\rm tot}$. Poiché le prime due colonne (polso) sono comuni a tutti i rami, il sistema accoppia le dita: lo spostamento del polso che aiuta un dito modifica la posizione di tutti gli altri, ed è la soluzione del problema impilato a determinare il compromesso. Il sistema è risolvibile solo se le $3r$ equazioni sono compatibili con i limiti articolari; in caso contrario il risolutore restituisce l'errore residuo, che è usato come indicatore di non raggiungibilità dell'accordo.
+
+\subsection{Inseguimento di traiettorie}
+
+Per traiettorie cartesiane $\boldsymbol p^d(t)$ il problema è risolto in ogni istante di campionamento, inizializzando l'iterazione con la soluzione del campione precedente (\textit{warm start}). Ciò garantisce continuità nello spazio dei giunti (si resta sullo stesso ramo della soluzione) e convergenza in poche iterazioni, perché la condizione iniziale è già vicina al nuovo obiettivo. Le leggi orarie sono polinomi di quinto grado (a minimo sbalzo):
+\begin{equation}
+    s(\tau)=10\tau^3-15\tau^4+6\tau^5
+    \qquad \tau = \frac{t}{T} \in [0,1]
+\end{equation}
+con velocità e accelerazione nulle agli estremi, in modo da non introdurre discontinuità di velocità alla pressione e al rilascio.
+
+\begin{algorithm}[H]
+\SetAlgoLined
+\KwData{Riferimento target $\boldsymbol{p}^d$, postura di riposo $\boldsymbol{q}_{\text{rest}}$, tolleranza $\varepsilon$, massimo iterazioni $N_{\max}$}
+\KwResult{Vettore giunti aggiornato $\boldsymbol{q}$}
+ $\boldsymbol{q} \leftarrow \boldsymbol{q}_{\text{prev}}$ \tcp*{Inizializzazione con warm start}
+ $iter \leftarrow 0$ \\
+ \While{$iter < N_{\max}$}{
+  Calcolare la cinematica diretta $\boldsymbol{p}_{e,k}(\boldsymbol{q})$ per i diti coinvolti\;
+  Valutare l'errore spaziale $\boldsymbol{e}_{\text{tot}} \leftarrow \boldsymbol{p}^d - \boldsymbol{p}_{e,k}(\boldsymbol{q})$\;
+  Includere eventuali vincoli unilaterali violati ($z_{e,j} < z_{\min}$)\;
+  \eIf{$\max_k \|\boldsymbol{e}_k\| < \varepsilon$}{
+   \textbf{break} \tcp*{Convergenza raggiunta}
+   }{
+   Calcolare lo Jacobiano multi-catena $\boldsymbol{J}_{\text{tot}}(\boldsymbol{q})$\;
+   Calcolare il fattore di smorzamento $\lambda$ adattativo\;
+   Calcolare il passo di base: $\Delta\boldsymbol{q} \leftarrow \boldsymbol{J}^{\#}_W \boldsymbol{e}_{\text{tot}} + \boldsymbol{P}\Delta\boldsymbol{q}_0$\;
+   \If{uno o più giunti superano i limiti meccanici}{
+    Congelare i giunti in violazione (rimuovendo le colonne da $\boldsymbol{J}_{\text{tot}}$)\;
+    Ricalcolare $\Delta\boldsymbol{q}$ utilizzando solo i giunti attivi rimanenti\;
+   }
+   Aggiornare la configurazione: $\boldsymbol{q} \leftarrow \text{sat}(\boldsymbol{q} + \alpha\Delta\boldsymbol{q})$\;
+   $iter \leftarrow iter + 1$\;
+  }
+ }
+ \Return $\boldsymbol{q}$
+ \caption{Risoluzione IK multi-catena a minimi quadrati smorzati}
+ \label{alg:ik_dls}
+\end{algorithm}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Statica e dualità cineto-statica}
+\label{sec:statics}
+
+La statica studia l'equilibrio del manipolatore sotto l'azione di forze applicate all'organo terminale e delle coppie ai giunti, in assenza di moto. Nel caso di \textit{RoboLiszt} essa permette di determinare quali coppie debbano esercitare gli attuatori per sostenere la mano contro la gravità e per premere un tasto con una forza assegnata.
+
+\subsection{Principio dei lavori virtuali}
+
+Si consideri uno spostamento virtuale $\delta\boldsymbol q$ dei giunti, cui corrisponde uno spostamento del polpastrello $\delta\boldsymbol p_e=\boldsymbol J_P(\boldsymbol q)\,\delta\boldsymbol q$. Il lavoro virtuale compiuto dalle coppie $\boldsymbol\tau$ e dalla forza $\boldsymbol F_e$ che il polpastrello esercita sull'ambiente è:
+\begin{equation}
+    \delta W=\boldsymbol\tau^\top\delta\boldsymbol q-\boldsymbol F_e^\top\delta\boldsymbol p_e
+    =\left(\boldsymbol\tau-\boldsymbol J_P^\top\boldsymbol F_e\right)^\top\delta\boldsymbol q
+\end{equation}
+All'equilibrio il lavoro virtuale si annulla per ogni $\delta\boldsymbol q$, da cui la relazione di dualità cineto-statica:
+\begin{equation}
+    \boldsymbol\tau=\boldsymbol J_P^\top(\boldsymbol q)\,\boldsymbol F_e
+    \label{eq:duality}
+\end{equation}
+La stessa matrice $\boldsymbol J_P$ che lega le velocità dei giunti a quelle del polpastrello lega quindi, trasposta, le forze alle coppie. Un'equivalente espressione in potenza, $\boldsymbol\tau^\top\dot{\boldsymbol q}=\boldsymbol F_e^\top\dot{\boldsymbol p}_e$, è stata verificata numericamente per configurazioni casuali (scarto inferiore a $10^{-12}$).
+
+\subsection{Statica con gravità e forze di contatto}
+
+Includendo il peso dei corpi, la condizione di equilibrio diventa:
+\begin{equation}
+    \boldsymbol\tau=\boldsymbol g(\boldsymbol q)-\boldsymbol J_P^\top(\boldsymbol q)\,\boldsymbol F_c
+    \label{eq:statics_gravity}
+\end{equation}
+dove $\boldsymbol g=\partial U/\partial\boldsymbol q$ è il vettore delle coppie gravitazionali e $\boldsymbol F_c=-\boldsymbol F_e$ è la forza di contatto che il tasto esercita sul polpastrello. Il termine $\boldsymbol\tau_c=-\boldsymbol J_P^\top\boldsymbol F_c$ è la \emph{coppia di compensazione}, che gli attuatori devono fornire in aggiunta a quella necessaria a sostenere la mano. Nella pressione di un tasto, $\boldsymbol F_c$ è diretta verso l'alto, $\boldsymbol F_c=[0\;0\;F_n]^\top$.
+
+\paragraph{Struttura ramificata.} Poiché i giunti $J_1$ e $J_2$ sono comuni a tutti i rami, ogni forza di contatto sul dito $k$ carica sia i giunti del proprio ramo sia quelli del polso. Con più dita in contatto (accordo) vale la sovrapposizione degli effetti,
+\begin{equation}
+    \boldsymbol\tau=\boldsymbol g(\boldsymbol q)-\sum_{k}\boldsymbol J_{P,k}^\top(\boldsymbol q)\,\boldsymbol F_{c,k}
+\end{equation}
+cosicché le coppie ai giunti del polso sono la somma dei contributi di tutte le dita, mentre quelle delle falangi dipendono solo dal rispettivo dito. Poiché le colonne dello Jacobiano del dito $k$ relative ai rami degli altri dita sono nulle, tali giunti non partecipano alla statica del dito $k$.
+
+\paragraph{Singolarità e statica.} Nelle configurazioni singolari, $\boldsymbol J_P^\top$ ha un nucleo non banale: esistono forze al polpastrello che non richiedono alcuna coppia ai giunti (sono sostenute dalla struttura). Questo comportamento duale rispetto alla perdita di mobilità è quello che si osserva quando il dito è quasi completamente esteso: il polpastrello può sostenere un carico verticale con coppie piccole ma non può muoversi in quella direzione.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\clearpage
+\section{Ellissoidi di manipolabilità}
+\label{sec:manipulability_ellipsoids}
+
+Gli indici di manipolabilità quantificano la facilità con cui il polpastrello può muoversi o esercitare forze in ciascuna direzione, per una data configurazione. S
+i considera lo Jacobiano di posizione $\boldsymbol J_P\in\mathbb R^{3\times n_k}$ ristretto ai giunti attivi del dito $k$ (con o senza i due giunti del polso) e si decompone ai valori singolari $\boldsymbol J_P=\boldsymbol U\boldsymbol\Sigma\boldsymbol V^\top$, con $\sigma_1\ge\sigma_2\ge\sigma_3\ge 0$.
+
+\subsection{Ellissoide di manipolabilità in velocità}
+
+L'insieme delle velocità del polpastrello ottenibili con velocità articolari di norma unitaria, $\|\dot{\boldsymbol q}\|\le 1$, è l'ellissoide:
+\begin{equation}
+    \dot{\boldsymbol p}_e^\top\left(\boldsymbol J_P\boldsymbol J_P^\top\right)^{-1}\dot{\boldsymbol p}_e\le 1
+\end{equation}
+i cui assi principali sono le colonne $\boldsymbol u_i$ di $\boldsymbol U$ e i cui semiassi sono i valori singolari $\sigma_i$. 
+Come indici scalari si usano la manipolabilità di Yoshikawa e il numero di condizionamento:
+\begin{equation}
+    w=\sqrt{\det\left(\boldsymbol J_P\boldsymbol J_P^\top\right)}=\sigma_1\sigma_2\sigma_3,
+    \qquad
+    \kappa=\frac{\sigma_1}{\sigma_3}
+\end{equation}
+Il valore massimo di velocità lungo una direzione unitaria $\boldsymbol u$ è
+\begin{equation}
+    v_{\max}(\boldsymbol u)=\frac{1}{\sqrt{\boldsymbol u^\top(\boldsymbol J_P\boldsymbol J_P^\top)^{-1}\boldsymbol u}}
+    \label{eq:vdir}
+\end{equation}
+che per $\boldsymbol u=\hat{\boldsymbol z}$ misura la velocità verticale massima, l'attitudine a “premere” un tasto.
+
+\subsection{Ellissoide di manipolabilità in forza}
+
+L'insieme delle forze sostenibili al polpastrello con coppie di norma unitaria, $\|\boldsymbol\tau\|\le 1$, si ottiene dalla~\eqref{eq:duality}:
+\begin{equation}
+    \boldsymbol F^\top\left(\boldsymbol J_P\boldsymbol J_P^\top\right)\boldsymbol F\le 1
+\end{equation}
+L'ellissoide di forza ha gli \emph{stessi assi principali} di quello di velocità, ma semiassi $1/\sigma_i$: le direzioni in cui il polpastrello si muove con facilità sono quelle in cui esercita meno forza e viceversa. 
+Il valore massimo di forza lungo $\boldsymbol u$ è:
+\begin{equation}
+    f_{\max}(\boldsymbol u)=\frac{1}{\sqrt{\boldsymbol u^\top\boldsymbol J_P\boldsymbol J_P^\top\boldsymbol u}}
+    \label{eq:fdir}
+\end{equation}
+In prossimità di una singolarità, $\sigma_3\to 0$: l'ellissoide di velocità si schiaccia lungo $\boldsymbol u_3$ e quello di forza si allunga indefinitamente nella stessa direzione.
+
+\subsection{Risultati per i polpastrelli di RoboLiszt}
+
+La Tabella~\ref{tab:ellipsoids} riporta gli indici nelle configurazioni di fondo corsa dei cinque dita (ricavate dal Task~2), per il caso in cui il polso partecipa al moto ($3\times(2+n_k)$) e per il caso di solo dito ($3\times n_k$). 
+Per il confronto, la Figura~\ref{fig:vertical_transmission} mostra la capacità di trasmissione verticale a riposo (\textit{hover}) e a fondo corsa.
+
+\begin{table}[!ht]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \small
+    \begin{tabular}{|l|ccc|c|c|cc|cc|}
+        \hline
+        & \multicolumn{5}{c|}{polso + dito} & \multicolumn{2}{c|}{vert.\ (polso+dito)} & \multicolumn{2}{c|}{vert.\ (solo dito)}\\
+        Dito & $\sigma_1$ & $\sigma_2$ & $\sigma_3$ & $w$ [$10^{-3}$] & $\kappa$ & $v_z$ & $f_z$ & $v_z$ & $f_z$\\ \hline \hline
+        Pollice & 0,165 & 0,124 & 0,035 & 0,72 & 4,7 & 0,053 & 9,9 & 0,043 & 14,2\\
+        Indice & 0,211 & 0,169 & 0,058 & 2,08 & 3,6 & 0,089 & 7,1 & 0,007 & 21,0\\
+        Medio & 0,207 & 0,168 & 0,068 & 2,37 & 3,0 & 0,097 & 7,3 & 0,012 & 25,1\\
+        Anulare & 0,212 & 0,169 & 0,053 & 1,90 & 4,0 & 0,083 & 7,1 & 0,006 & 18,6\\
+        Mignolo & 0,156 & 0,137 & 0,055 & 1,18 & 2,9 & 0,060 & 12,5 & 0,009 & 40,1\\ \hline
+    \end{tabular}
+    \caption{Indici di manipolabilità nella configurazione di fondo corsa (tasti C4--G4, Task~2). $\sigma_i$ in m/s per rad/s (valori singolari); $w$ in m$^3$/(rad/s)$^3$; $v_z$ massima velocità verticale [m/s per rad/s] ed $f_z$ massima forza verticale [N per N$\cdot$m], dalle~\eqref{eq:vdir}--\eqref{eq:fdir} con $\boldsymbol u=\hat{\boldsymbol z}$.}
+    \label{tab:ellipsoids}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{analysis/ellipsoids_middle.png}
+    \caption{Ellissoidi di velocità, di forza e dinamica (Paragrafo~\ref{sec:dyn_manipulability}) del dito medio alla quota di riposo (blu) e a fondo corsa (rosso), con il polso partecipante. La freccia nera indica la direzione principale più debole; le scale di visualizzazione sono riportate nei titoli.}
+    \label{fig:ellipsoids_middle}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{analysis/vertical_transmission.png}
+    \caption{Trasmissione verticale dei cinque dita a riposo e a fondo corsa: massima velocità verticale (sinistra), massima forza verticale (centro) e massima accelerazione verticale (destra, normalizzata con i limiti di coppia ipotizzati nel Paragrafo~\ref{sec:dyn_manipulability}).}
+    \label{fig:vertical_transmission}
+\end{figure}
+
+\paragraph{Discussione.}
+
+Con il contributo del polso, i polpastrelli sono ben condizionati in tutte le configurazioni di fondo corsa ($\kappa$ tra $2{,}9$ e $4{,}7$) e la velocità verticale resta nell'intorno di $0{,}05$--$0{,}1$~m/s per rad/s. 
+Il quadro cambia se si considerano i soli giunti del dito: per indice, medio, anulare e mignolo la velocità verticale a fondo corsa scende a $0{,}006$--$0{,}012$~m/s per rad/s, circa dieci volte meno, mentre la forza verticale massima per unità di coppia sale fino a $40$~N per N$\cdot$m per il mignolo.
+
+È la manifestazione della dualità descritta sopra: a fondo corsa il dito, da solo, si trova vicino a una singolarità di confine (dito quasi disteso) lungo la direzione verticale, e può sostenere carichi verticali ma non muoversi in quella direzione. 
+Questo conferma, con uno strumento indipendente dall'IK, l'osservazione del Capitolo~\ref{ch:software} secondo cui il solo dito non raggiunge il fondo corsa e il polso deve contribuire. 
+Il pollice, con una catena a 5 DoF, è l'eccezione e mantiene una trasmissione verticale accettabile anche senza il polso ($v_z=0{,}043$).

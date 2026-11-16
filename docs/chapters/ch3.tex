@@ -1,0 +1,197 @@
+\chapter{Modellazione dinamica}
+\label{ch:dynamics}
+
+La dinamica mette in relazione le coppie ai giunti con il moto che ne risulta. Dopo aver formulato le equazioni del moto con un approccio energetico e lagrangiano (Paragrafi~\ref{sec:eq_moto} e~\ref{sec:lagrange}), si presenta la formulazione ricorsiva di Newton--Eulero, adatta alla struttura ramificata della mano (Paragrafo~\ref{sec:newton_euler}), si discutono la dinamica diretta e inversa e il modello utilizzato (Paragrafo~\ref{sec:dir_inv}) e si introduce l'ellissoide di manipolabilità dinamica (Paragrafo~\ref{sec:dyn_manipulability}).
+
+\section{Equazioni del moto}
+\label{sec:eq_moto}
+
+Il moto di un sistema a $n$ gradi di libertà si può ricavare dall'energia. 
+Detto $\boldsymbol q$ il vettore delle coordinate generalizzate (qui gli angoli di giunto), l'energia cinetica del manipolatore è la somma dei contributi dei corpi:
+\begin{equation}
+    \mathcal{T}
+    =\sum_{i=1}^{n}\left(\frac12 m_i\,\dot{\boldsymbol p}_{c_i}^\top\dot{\boldsymbol p}_{c_i}+\frac12\,\boldsymbol\omega_i^\top\boldsymbol I_i\boldsymbol\omega_i\right)
+    =\frac12\,\dot{\boldsymbol q}^\top\boldsymbol M(\boldsymbol q)\,\dot{\boldsymbol q}
+\end{equation}
+dove $m_i$ è la massa del corpo $i$, $\boldsymbol p_{c_i}$ la posizione del suo baricentro, $\boldsymbol\omega_i$ la velocità angolare e $\boldsymbol I_i$ il tensore d'inerzia in assi base. 
+Introducendo gli Jacobiani del baricentro, $\dot{\boldsymbol p}_{c_i}=\boldsymbol J_{P}^{(i)}\dot{\boldsymbol q}$ e $\boldsymbol\omega_i=\boldsymbol J_{O}^{(i)}\dot{\boldsymbol q}$, la matrice d'inerzia (simmetrica e definita positiva) risulta:
+\begin{equation}
+    \boldsymbol M(\boldsymbol q)=\sum_{i=1}^{n}\left(m_i\boldsymbol J_P^{(i)\top}\boldsymbol J_P^{(i)}+\boldsymbol J_O^{(i)\top}\boldsymbol I_i\boldsymbol J_O^{(i)}\right)
+\end{equation}
+Nella struttura ramificata gli Jacobiani $\boldsymbol J^{(i)}$ hanno colonne non nulle solo per i giunti che precedono il corpo $i$ lungo il ramo: l'inerzia di un dito non influenza quindi il moto degli altri, se non attraverso il polso, che li porta tutti. L'energia potenziale gravitazionale è
+\begin{equation}
+    \mathcal{U}(\boldsymbol q)=-\sum_{i=1}^{n}m_i\,\boldsymbol g_0^\top\boldsymbol p_{c_i}(\boldsymbol q)
+\end{equation}
+con $\boldsymbol g_0$ vettore accelerazione di gravità (nel modello, $[0\;0\;-9{,}81]^\top$~m/s$^2$ nel sistema tastiera).
+
+\section{Formulazione di Lagrange}
+\label{sec:lagrange}
+
+Con la lagrangiana $\mathcal L= \mathcal T - \mathcal U$ le equazioni di Lagrange:
+\begin{equation}
+    \frac{d}{dt}\frac{\partial\mathcal L}{\partial\dot q_i}-\frac{\partial\mathcal L}{\partial q_i}=\xi_i,\qquad i=1,\dots,n
+\end{equation}
+con $\xi_i$ forze generalizzate (coppie degli attuatori, attrito, forze di contatto), forniscono il modello nella forma standard
+\begin{equation}
+    \boldsymbol M(\boldsymbol q)\ddot{\boldsymbol q}+\boldsymbol C(\boldsymbol q,\dot{\boldsymbol q})\dot{\boldsymbol q}+\boldsymbol F_v\dot{\boldsymbol q}+\boldsymbol g(\boldsymbol q)=\boldsymbol\tau+\boldsymbol J_P^\top(\boldsymbol q)\boldsymbol F_{\rm ext}
+    \label{eq:lagrange}
+\end{equation}
+dove $\boldsymbol C\dot{\boldsymbol q}$ contiene i termini centrifughi e di Coriolis, con elementi $c_{ij}=\sum_k c_{ijk}\dot q_k$ e simboli di Christoffel $c_{ijk}=\frac12\left(\partial m_{ij}/\partial q_k+\partial m_{ik}/\partial q_j-\partial m_{jk}/\partial q_i\right)$, $\boldsymbol F_v=\mathrm{diag}(f_{v,i})$ è l'attrito viscoso, $\boldsymbol g=\partial U/\partial\boldsymbol q$ le coppie gravitazionali e $\boldsymbol F_{\rm ext}$ la forza di contatto sul polpastrello. 
+Il modello gode di due proprietà utili per la verifica numerica: $\dot{\boldsymbol M}-2\boldsymbol C$ è antisimmetrica e il termine gravitazionale è il gradiente dell'energia potenziale.
+
+\paragraph{Scelta implementativa.} Per un sistema a 20 giunti con struttura ad albero, derivare simbolicamente $\boldsymbol C$ è oneroso e soggetto a errori. Nel lavoro svolto i termini della~\eqref{eq:lagrange} sono calcolati numericamente dall'algoritmo ricorsivo della sezione seguente; la coerenza con la formulazione lagrangiana è verificata come illustrato nel Paragrafo~\ref{sec:dir_inv}.
+
+\section{Formulazione ricorsiva di Newton--Eulero}
+\label{sec:newton_euler}
+
+La formulazione di Newton--Eulero scrive l'equilibrio dinamico di ciascun corpo e si presta a una soluzione ricorsiva con complessità $O(n)$. 
+Per una catena ramificata essa si articola in due passaggi che percorrono l'albero in versi opposti: dalla radice alle foglie per la cinematica, dalle foglie alla radice per le forze. 
+Tutte le grandezze sono espresse nel sistema base.
+
+\paragraph{Ricorsione in avanti (cinematica).} Per ogni giunto $i$, con genitore $\pi(i)$, asse $\boldsymbol a_i=\boldsymbol z_{\pi(i)}$ e origine $\boldsymbol o_i$:
+\begin{align}
+    \boldsymbol\omega_i&=\boldsymbol\omega_{\pi(i)}+\boldsymbol a_i\dot q_i\\
+    \dot{\boldsymbol\omega}_i&=\dot{\boldsymbol\omega}_{\pi(i)}+\boldsymbol a_i\ddot q_i+\boldsymbol\omega_{\pi(i)}\times\boldsymbol a_i\dot q_i\\
+    \ddot{\boldsymbol o}_i&=\ddot{\boldsymbol o}_{\pi(i)}+\dot{\boldsymbol\omega}_i\times\boldsymbol r_i+\boldsymbol\omega_i\times(\boldsymbol\omega_i\times\boldsymbol r_i),\quad \boldsymbol r_i=\boldsymbol o_i-\boldsymbol o_{\pi(i)}\\
+    \ddot{\boldsymbol p}_{c_i}&=\ddot{\boldsymbol o}_i+\dot{\boldsymbol\omega}_i\times\boldsymbol\rho_i+\boldsymbol\omega_i\times(\boldsymbol\omega_i\times\boldsymbol\rho_i),\quad \boldsymbol\rho_i=\boldsymbol p_{c_i}-\boldsymbol o_i
+\end{align}
+dove l'origine $\boldsymbol o_{\pi(i)}$ appartiene all'asse del giunto $i$ e quindi la sua accelerazione è la stessa vista da entrambi i corpi. Per la base fissa, $\boldsymbol\omega_0=\dot{\boldsymbol\omega}_0=\ddot{\boldsymbol o}_0=\boldsymbol 0$. Per ciascun corpo si calcolano la forza e il momento d'inerzia dinamici
+\begin{equation}
+    \boldsymbol F_i=m_i\left(\ddot{\boldsymbol p}_{c_i}-\boldsymbol g_0\right),
+    \qquad \qquad
+    \boldsymbol N_i=\boldsymbol I_i\dot{\boldsymbol\omega}_i+\boldsymbol\omega_i\times\boldsymbol I_i\boldsymbol\omega_i
+\end{equation}
+in cui l'accelerazione di gravità è incorporata come accelerazione fittizia della base.
+
+\paragraph{Ricorsione all'indietro (forze).} Partendo dalle foglie, detti $\boldsymbol f_i$ e $\boldsymbol n_i$ la forza e il momento (rispetto a $\boldsymbol o_{\pi(i)}$) che il genitore esercita sul corpo $i$, e $\mathcal C(i)$ l'insieme dei figli:
+\begin{align}
+    \boldsymbol f_i&=\boldsymbol F_i+\sum_{j\in\mathcal C(i)}\boldsymbol f_j\\
+    \boldsymbol n_i&=\boldsymbol N_i+(\boldsymbol p_{c_i}-\boldsymbol o_{\pi(i)})\times\boldsymbol F_i+\sum_{j\in\mathcal C(i)}\left[\boldsymbol n_j+(\boldsymbol o_i-\boldsymbol o_{\pi(i)})\times\boldsymbol f_j\right]\\
+    \tau_i&=\boldsymbol a_i^\top\boldsymbol n_i
+\end{align}
+La somma sui figli è ciò che rende la formulazione particolarmente adatta alla mano: il giunto $J_2$ ha cinque figli, e le forze e i momenti dei cinque rami si sommano automaticamente nella ricorsione, senza dover scrivere un'espressione specifica per ogni dito. Le forze $\boldsymbol f_1$ ed $\boldsymbol n_1$ trasmesse dalla base alla mano forniscono direttamente la forza che la struttura che sostiene il polso (il carrello, nel Task~4) deve esercitare.
+
+\paragraph{Base in moto.} Se la base ha accelerazione $\boldsymbol a_b$ (carrello), la~\eqref{eq:lagrange} resta valida sostituendo $\boldsymbol g_0$ con $\boldsymbol g_0-\boldsymbol a_b$, perché una traslazione accelerata della base equivale a un campo gravitazionale modificato.
+
+\begin{algorithm}[H]
+\SetAlgoLined
+\KwData{Stato del sistema $(\boldsymbol{q}, \dot{\boldsymbol{q}}, \ddot{\boldsymbol{q}})$, parametri cinematici e inerziali}
+\KwResult{Vettore delle coppie ai giunti $\boldsymbol{\tau}$}
+
+\BlankLine
+ \tcp{Inizializzazione delle condizioni al contorno (base)}
+ $\boldsymbol{\omega}_0 \leftarrow \boldsymbol{0}$, $\dot{\boldsymbol{\omega}}_0 \leftarrow \boldsymbol{0}$\;
+ $\ddot{\boldsymbol{o}}_0 \leftarrow -\boldsymbol{g}_0$ \tcp*{Compensazione gravità tramite accelerazione fittizia}
+ 
+ \BlankLine
+ \tcp{Ricorsione in Avanti (dalla base alle foglie)}
+ \For{$i = 1$ \KwTo $n$}{
+  $\pi(i) \leftarrow$ indice del genitore del giunto $i$\;
+  $\boldsymbol{\omega}_i \leftarrow \boldsymbol{\omega}_{\pi(i)} + \boldsymbol{a}_i\dot{q}_i$\;
+  $\dot{\boldsymbol{\omega}}_i \leftarrow \dot{\boldsymbol{\omega}}_{\pi(i)} + \boldsymbol{a}_i\ddot{q}_i + \boldsymbol{\omega}_{\pi(i)} \times \boldsymbol{a}_i\dot{q}_i$\;
+  $\ddot{\boldsymbol{o}}_i \leftarrow \ddot{\boldsymbol{o}}_{\pi(i)} + \dot{\boldsymbol{\omega}}_i \times \boldsymbol{r}_i + \boldsymbol{\omega}_i \times (\boldsymbol{\omega}_i \times \boldsymbol{r}_i)$\;
+  $\ddot{\boldsymbol{p}}_{c_i} \leftarrow \ddot{\boldsymbol{o}}_i + \dot{\boldsymbol{\omega}}_i \times \boldsymbol{\rho}_i + \boldsymbol{\omega}_i \times (\boldsymbol{\omega}_i \times \boldsymbol{\rho}_i)$\;
+  $\boldsymbol{F}_i \leftarrow m_i \ddot{\boldsymbol{p}}_{c_i}$ \tcp*{Forza inerziale}
+  $\boldsymbol{N}_i \leftarrow \boldsymbol{I}_i\dot{\boldsymbol{\omega}}_i + \boldsymbol{\omega}_i \times \boldsymbol{I}_i\boldsymbol{\omega}_i$ \tcp*{Momento inerziale}
+ }
+ 
+ \BlankLine
+ \tcp{Ricorsione all'Indietro (dalle foglie alla base)}
+ \For{$i = n$ \KwTo $1$ \text{ (ordine topologico inverso)}}{
+  $\mathcal{C}(i) \leftarrow$ insieme degli indici dei figli del giunto $i$\;
+  $\boldsymbol{f}_i \leftarrow \boldsymbol{F}_i + \sum_{j \in \mathcal{C}(i)} \boldsymbol{f}_j$\;
+  $\boldsymbol{n}_i \leftarrow \boldsymbol{N}_i + (\boldsymbol{p}_{c_i} - \boldsymbol{o}_{\pi(i)}) \times \boldsymbol{F}_i + \sum_{j \in \mathcal{C}(i)} \left[ \boldsymbol{n}_j + (\boldsymbol{o}_i - \boldsymbol{o}_{\pi(i)}) \times \boldsymbol{f}_j \right]$\;
+  $\tau_i \leftarrow \boldsymbol{a}_i^\top\boldsymbol{n}_i + \tau_{\text{attrito},i}$\;
+ }
+ \Return $\boldsymbol{\tau}$
+ \caption{Dinamica Inversa con Ricorsione di Newton-Eulero}
+ \label{alg:newton_euler}
+\end{algorithm}
+
+\section{Dinamica diretta e inversa; modello utilizzato}
+\label{sec:dir_inv}
+
+\paragraph{Dinamica inversa.} Data una traiettoria $(\boldsymbol q,\dot{\boldsymbol q},\ddot{\boldsymbol q})$, la ricorsione di Newton--Eulero fornisce direttamente le coppie $\boldsymbol\tau$ necessarie:
+\begin{equation}
+    \boldsymbol\tau=\boldsymbol M(\boldsymbol q)\ddot{\boldsymbol q}+\boldsymbol h(\boldsymbol q,\dot{\boldsymbol q})+\boldsymbol g(\boldsymbol q)+\boldsymbol F_v\dot{\boldsymbol q}-\boldsymbol J_P^\top\boldsymbol F_{\rm ext}
+\end{equation}
+con $\boldsymbol h=\boldsymbol C\dot{\boldsymbol q}$. Le singole componenti si ottengono per differenza: la gravità con $\dot{\boldsymbol q}=\ddot{\boldsymbol q}=\boldsymbol 0$, il termine di Coriolis con $\ddot{\boldsymbol q}=\boldsymbol 0$ e gravità nulla, il termine inerziale con $\dot{\boldsymbol q}=\boldsymbol 0$ e gravità nulla. La colonna $j$ della matrice d'inerzia è la coppia ottenuta con $\ddot{\boldsymbol q}=\boldsymbol e_j$, $\dot{\boldsymbol q}=\boldsymbol 0$ e gravità nulla.
+
+\paragraph{Dinamica diretta.} L'accelerazione per coppie assegnate si ricava risolvendo il sistema
+\begin{equation}
+    \ddot{\boldsymbol q}=\boldsymbol M^{-1}(\boldsymbol q)\left[\boldsymbol\tau-\boldsymbol h(\boldsymbol q,\dot{\boldsymbol q})-\boldsymbol g(\boldsymbol q)-\boldsymbol F_v\dot{\boldsymbol q}+\boldsymbol J_P^\top\boldsymbol F_{\rm ext}\right]
+\end{equation}
+e si integra numericamente.
+
+\subsection{Parametri inerziali del modello}
+
+I parametri inerziali non provengono da un modello CAD, che non è ancora disponibile, ma da ipotesi di progetto sulla geometria DH, riportate nella Tabella~\ref{tab:inertial}. Ogni corpo $i$ è modellato come un'asta uniforme che congiunge $\boldsymbol O_{i-1}$ a $\boldsymbol O_i$, con massa proporzionale alla lunghezza; ai corpi terminali si aggiunge la massa del polpastrello e al corpo~2 quella del palmo. I corpi a lunghezza nulla (per esempio i giunti cardanici del pollice) hanno una massa minima. La massa complessiva risulta $0{,}43$~kg.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|}
+        \hline
+        Parametro & Valore\\ \hline \hline
+        Densità lineare delle falangi & 0,25 kg/m\\
+        Raggio equivalente delle aste & 8 mm\\
+        Massa minima dei corpi a lunghezza nulla & 4 g\\
+        Massa del polpastrello & 3 g\\
+        Massa del palmo (corpo 2) & 0,20 kg\\
+        Baricentro del palmo (terna 2) & $[45\;0\;0]$ mm\\
+        Attrito viscoso ai giunti & $2\cdot10^{-3}$ N$\cdot$m$\cdot$s/rad\\
+        Coppia massima, polso / dita & 1,0 / 0,1 N$\cdot$m (ipotesi)\\ \hline
+    \end{tabular}
+    \caption{Parametri del modello a corpi rigidi: sono ipotesi di progetto da sostituire con i dati CAD o con una procedura di identificazione.}
+    \label{tab:inertial}
+\end{table}
+
+\subsection{Verifica numerica}
+
+L'implementazione è stata verificata in modo indipendente dalla ricorsione stessa:
+\begin{itemize}
+    \item le coppie gravitazionali coincidono con il gradiente numerico dell'energia potenziale, $\partial U/\partial\boldsymbol q$, con uno scarto massimo di $7\cdot10^{-12}$~N$\cdot$m;
+    \item l'energia cinetica $\frac12\dot{\boldsymbol q}^\top\boldsymbol M\dot{\boldsymbol q}$ coincide con quella calcolata direttamente dalle velocità dei baricentri (ottenute per differenze finite delle posizioni) e dalle velocità angolari dei corpi;
+    \item la matrice d'inerzia è simmetrica e definita positiva per configurazioni casuali;
+    \item in assenza di attrito e coppie, il moto simulato (integratore di Runge--Kutta del quarto ordine, passo $2$~ms) conserva l'energia totale: nella prova eseguita su $0{,}3$~s la variazione è di $7{,}8~\mu$J;
+    \item la forza trasmessa dalla base alla mano per una traslazione accelerata coincide con $m_{\rm tot}(\boldsymbol a_b-\boldsymbol g_0)$.
+\end{itemize}
+
+\paragraph{Condizionamento.} La matrice d'inerzia ha autovalori da $6{,}4\cdot10^{-8}$ a $4{,}4\cdot10^{-3}$~kg$\cdot$m$^2$ in una configurazione di prova: i giunti distali delle dita hanno inerzie di ordini di grandezza inferiori a quelle del polso. 
+Questo ha una conseguenza pratica: un controllore che commandi coppie con un guadagno proporzionale alla velocità $k_d$ a passo $\Delta t$ è stabile solo se $k_d\Delta t/I<2$. Con inerzie dell'ordine di $10^{-7}$~kg$\cdot$m$^2$ i guadagni devono perciò essere espressi in funzione dell'inerzia (pulsazioni naturali, controllo nello spazio operativo con l'inerzia operativa $\boldsymbol\Lambda$) e il periodo di controllo deve essere breve: a $5$~ms il controllo del tocco del Capitolo~\ref{ch:controllo} è instabile, a $1$~ms funziona (Tabella~\ref{tab:ctrl_rate}). Un modello con inerzia uniforme per giunto ($0{,}01$~kg$\cdot$m$^2$), usato in una prima versione dello studio, era stabile a $5$~ms ma sovrastimava l'inerzia efficace della punta e produceva picchi di forza irrealistici; il modello a corpi rigidi è quello adottato in tutta la relazione.
+
+\section{Ellissoide di manipolabilità dinamica}
+\label{sec:dyn_manipulability}
+
+L'ellissoide di manipolabilità dinamica descrive l'accelerazione che il polpastrello può ottenere con coppie ai giunti limitate. 
+Dalla~\eqref{eq:lagrange}, trascurando i termini di velocità e fissando i giunti non attivi, l'accelerazione del polpastrello per coppie $\boldsymbol\tau$ è, a meno della gravità,
+\begin{equation}
+    \ddot{\boldsymbol p}_e=\boldsymbol J_P\ddot{\boldsymbol q}=\boldsymbol J_P\boldsymbol M_a^{-1}\boldsymbol\tau
+\end{equation}
+dove $\boldsymbol M_a$ è il blocco di $\boldsymbol M$ relativo ai giunti attivi. Normalizzando ciascuna coppia con il proprio limite, $\boldsymbol\tau=\boldsymbol T_{\max}\hat{\boldsymbol\tau}$, $\|\hat{\boldsymbol\tau}\|\le 1$, l'insieme delle accelerazioni raggiungibili è l'ellissoide
+\begin{equation}
+    \ddot{\boldsymbol p}_e^\top\left(\boldsymbol G\boldsymbol G^\top\right)^{-1}\ddot{\boldsymbol p}_e\le 1,\qquad
+    \boldsymbol G=\boldsymbol J_P\boldsymbol M_a^{-1}\boldsymbol T_{\max}
+\end{equation}
+i cui semiassi sono i valori singolari di $\boldsymbol G$. La massima accelerazione lungo la direzione unitaria $\boldsymbol u$ è $a_{\max}(\boldsymbol u)=\left(\boldsymbol u^\top(\boldsymbol G\boldsymbol G^\top)^{-1}\boldsymbol u\right)^{-1/2}$. Come limiti di coppia si sono assunti $1{,}0$~N$\cdot$m per il polso e $0{,}1$~N$\cdot$m per i giunti delle dita (Tabella~\ref{tab:inertial}): sono valori di riferimento, in assenza di dati sugli attuatori, e i risultati assoluti vanno letti di conseguenza.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|ccc|cc|}
+        \hline
+        & \multicolumn{3}{c|}{semiassi a fondo corsa [m/s$^2$]} & \multicolumn{2}{c|}{$a_{\max,z}$ [m/s$^2$]}\\
+        Dito & $\sigma_1$ & $\sigma_2$ & $\sigma_3$ & riposo & fondo corsa\\ \hline \hline
+        Pollice & 743 & 667 & 67 & 585 & 171\\
+        Indice & 725 & 63 & 39 & 90 & 64\\
+        Medio & 627 & 82 & 33 & 106 & 84\\
+        Anulare & 727 & 56 & 42 & 86 & 58\\
+        Mignolo & 859 & 126 & 48 & 160 & 137\\ \hline
+    \end{tabular}
+    \caption{Ellissoide di manipolabilità dinamica dei polpastrelli (polso e dito attivi, coppie normalizzate con $\tau_{\max}$ ipotizzati).}
+    \label{tab:dynellipsoid}
+\end{table}
+
+Anche con coppie limitate, la massima accelerazione verticale ($58$--$171$~m/s$^2$ a fondo corsa) è ben superiore all'accelerazione di gravità: la capacità di accelerare il polpastrello verso il basso non è quindi il fattore limitante. 
+Il valore diminuisce passando dalla quota di riposo al fondo corsa per tutte le dita (per il pollice da $585$ a $171$~m/s$^2$), perché in quella configurazione il polpastrello è più vicino alla singolarità lungo la verticale. 
+L'ellissoide è molto anisotropo, con un asse dominante nell'ordine di $6$--$9\cdot10^{2}$~m/s$^2$ e assi minori più piccoli di un ordine di grandezza, coerente con il ruolo del polso, il cui grande braccio rispetto al polpastrello lo rende dominante nella direzione corrispondente (interpretazione da confermare con i parametri reali).

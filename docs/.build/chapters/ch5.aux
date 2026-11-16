@@ -1,0 +1,95 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\@writefile{toc}{\contentsline {chapter}{\numberline {5}Architettura software e pianificazione}{45}{chapter.5}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\@writefile{loa}{\addvspace {10\p@ }}
+\newlabel{ch:software}{{5}{45}{Architettura software e pianificazione}{chapter.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5.1}Architettura del sistema}{45}{section.5.1}\protected@file@percent }
+\newlabel{sec:architettura}{{5.1}{45}{Architettura del sistema}{section.5.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Moduli.}{45}{section*.29}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Flusso dei dati.}{45}{section*.30}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Verifiche automatiche.}{45}{section*.31}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.1}{\ignorespaces Moduli del pacchetto Python.}}{46}{table.5.1}\protected@file@percent }
+\newlabel{tab:moduli}{{5.1}{46}{Moduli del pacchetto Python}{table.5.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Integrazione con ROS~2 e Gazebo.}{46}{section*.32}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5.2}Implementazione Computazionale del Modello Multicorpo}{46}{section.5.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5.3}Modello fisico e configurazione URDF}{47}{section.5.3}\protected@file@percent }
+\newlabel{sec:urdf}{{5.3}{47}{Modello fisico e configurazione URDF}{section.5.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3.1}Dalla convenzione DH all'URDF}{47}{subsection.5.3.1}\protected@file@percent }
+\newlabel{eq:urdf_origin}{{5.2}{47}{Dalla convenzione DH all'URDF}{equation.5.3.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.1}{\ignorespaces Rappresentazione grafica e mesh 3D del modello multicorpo di RoboLiszt in ambiente di simulazione.}}{48}{figure.5.1}\protected@file@percent }
+\newlabel{fig:robot_static}{{5.1}{48}{Rappresentazione grafica e mesh 3D del modello multicorpo di RoboLiszt in ambiente di simulazione}{figure.5.1}{}}
+\@writefile{toc}{\contentsline {paragraph}{Parametri inerziali nell'URDF.}{48}{section*.33}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3.2}Carrello, giunti e controllo}{48}{subsection.5.3.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3.3}Mondo con la tastiera}{49}{subsection.5.3.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.3.4}Verifica del modello URDF}{49}{subsection.5.3.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.2}{\ignorespaces Coerenza dell'URDF generato con il modello DH e con il modello inerziale (25 configurazioni casuali, carrello compreso).}}{49}{table.5.2}\protected@file@percent }
+\newlabel{tab:urdf_check}{{5.2}{49}{Coerenza dell'URDF generato con il modello DH e con il modello inerziale (25 configurazioni casuali, carrello compreso)}{table.5.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5.4}Definizione dei task e generazione delle traiettorie}{50}{section.5.4}\protected@file@percent }
+\newlabel{sec:ik_tasks}{{5.4}{50}{Definizione dei task e generazione delle traiettorie}{section.5.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4.1}Impostazione comune}{50}{subsection.5.4.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Sistema di riferimento della tastiera.}{50}{section*.34}\protected@file@percent }
+\newlabel{eq:base_shift}{{5.5}{50}{Sistema di riferimento della tastiera}{equation.5.4.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5.3}{\ignorespaces Parametri geometrici e di compito. Il punto di pressione dipende dal dito: le dita pi\`u corte (pollice, mignolo) suonano pi\`u vicino al bordo anteriore del tasto.}}{50}{table.5.3}\protected@file@percent }
+\newlabel{tab:task_params}{{5.3}{50}{Parametri geometrici e di compito. Il punto di pressione dipende dal dito: le dita pi\`u corte (pollice, mignolo) suonano pi\`u vicino al bordo anteriore del tasto}{table.5.3}{}}
+\@writefile{toc}{\contentsline {paragraph}{Postura di partenza.}{50}{section*.35}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Schema di generazione delle traiettorie.}{51}{section*.36}\protected@file@percent }
+\newlabel{eq:press_profile}{{5.6}{51}{Schema di generazione delle traiettorie}{equation.5.4.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4.2}Task 1: movimento in spazio libero (gesto di saluto)}{51}{subsection.5.4.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {5.2}{\ignorespaces Task 1: traiettorie dei polpastrelli nello spazio (sinistra), giunti del polso (centro) e indice di singolarit\`a $\sigma _{\min }$ dello Jacobiano del medio (destra). Le aree colorate distinguono le fasi di sollevamento, oscillazione e abbassamento.}}{52}{figure.5.2}\protected@file@percent }
+\newlabel{fig:task1}{{5.2}{52}{Task 1: traiettorie dei polpastrelli nello spazio (sinistra), giunti del polso (centro) e indice di singolarit\`a $\sigma _{\min }$ dello Jacobiano del medio (destra). Le aree colorate distinguono le fasi di sollevamento, oscillazione e abbassamento}{figure.5.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4.3}Task 2: pressione di un singolo tasto}{52}{subsection.5.4.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4.4}Task 3: esecuzione di un accordo}{52}{subsection.5.4.4}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.4}{\ignorespaces Task 2: pressione di un singolo tasto con ciascun dito. Errore: scostamento del polpastrello dal punto di fondo corsa; la penultima colonna \`e la minima quota dei polpastrelli delle dita che non suonano; $\Delta q_{1,2}$ \`e il massimo scostamento del polso dalla postura iniziale.}}{53}{table.5.4}\protected@file@percent }
+\newlabel{tab:task2}{{5.4}{53}{Task 2: pressione di un singolo tasto con ciascun dito. Errore: scostamento del polpastrello dal punto di fondo corsa; la penultima colonna \`e la minima quota dei polpastrelli delle dita che non suonano; $\Delta q_{1,2}$ \`e il massimo scostamento del polso dalla postura iniziale}{table.5.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.3}{\ignorespaces Task 2: quota dei cinque polpastrelli durante la pressione del tasto E4 con il medio. La linea tratteggiata indica il fondo corsa ($-8$~mm); le aree colorate corrispondono alle fasi della legge~\eqref  {eq:press_profile}.}}{53}{figure.5.3}\protected@file@percent }
+\newlabel{fig:task2_z}{{5.3}{53}{Task 2: quota dei cinque polpastrelli durante la pressione del tasto E4 con il medio. La linea tratteggiata indica il fondo corsa ($-8$~mm); le aree colorate corrispondono alle fasi della legge~\eqref {eq:press_profile}}{figure.5.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4.5}Task 4: locomozione del polso e salto d'ottava}{53}{subsection.5.4.5}\protected@file@percent }
+\newlabel{subsec:task4}{{5.4.5}{53}{Task 4: locomozione del polso e salto d'ottava}{subsection.5.4.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.4}{\ignorespaces Task 2: configurazione della mano a fondo corsa durante la pressione di E4 con il medio (tasto evidenziato).}}{54}{figure.5.4}\protected@file@percent }
+\newlabel{fig:task2_pose}{{5.4}{54}{Task 2: configurazione della mano a fondo corsa durante la pressione di E4 con il medio (tasto evidenziato)}{figure.5.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5.5}{\ignorespaces Task 3: varianti dell'accordo. Nel caso senza vincolo unilaterale le dita non coinvolte (indice, anulare) scendono sotto la superficie dei tasti D4 ed F4, premendoli involontariamente. Nel caso a cinque dita non vi sono dita ferme.}}{54}{table.5.5}\protected@file@percent }
+\newlabel{tab:task3}{{5.5}{54}{Task 3: varianti dell'accordo. Nel caso senza vincolo unilaterale le dita non coinvolte (indice, anulare) scendono sotto la superficie dei tasti D4 ed F4, premendoli involontariamente. Nel caso a cinque dita non vi sono dita ferme}{table.5.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.5}{\ignorespaces Task 3: quota dei polpastrelli durante l'esecuzione della triade. Le tre dita che suonano scendono insieme al fondo corsa, mentre indice e anulare restano al di sopra della soglia.}}{55}{figure.5.5}\protected@file@percent }
+\newlabel{fig:task3_z}{{5.5}{55}{Task 3: quota dei polpastrelli durante l'esecuzione della triade. Le tre dita che suonano scendono insieme al fondo corsa, mentre indice e anulare restano al di sopra della soglia}{figure.5.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.6}{\ignorespaces Task 3: configurazione della mano a fondo corsa durante la triade (tasti C4, E4, G4 evidenziati).}}{55}{figure.5.6}\protected@file@percent }
+\newlabel{fig:task3_pose}{{5.6}{55}{Task 3: configurazione della mano a fondo corsa durante la triade (tasti C4, E4, G4 evidenziati)}{figure.5.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5.7}{\ignorespaces Task 4: moto del carrello (sinistra), posizione laterale dei polpastrelli (centro) ed errore dell'IK della triade traslata di $k$ tasti con sola rotazione del polso (destra: in verde i casi con errore $<0{,}1$~mm). Durante le fasi di pressione indice e anulare, non vincolati lateralmente, seguono il moto del polso entro circa 10~mm.}}{56}{figure.5.7}\protected@file@percent }
+\newlabel{fig:task4}{{5.7}{56}{Task 4: moto del carrello (sinistra), posizione laterale dei polpastrelli (centro) ed errore dell'IK della triade traslata di $k$ tasti con sola rotazione del polso (destra: in verde i casi con errore $<0{,}1$~mm). Durante le fasi di pressione indice e anulare, non vincolati lateralmente, seguono il moto del polso entro circa 10~mm}{figure.5.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4.6}Task 5: controllo dinamico del tocco}{56}{subsection.5.4.6}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.4.7}Sintesi dei risultati}{56}{subsection.5.4.7}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5.6}{\ignorespaces Sintesi dei task cinematici. L'errore di posizione \`e riferito ai polpastrelli che premono; nel Task~4 \`e l'errore di atterraggio dopo il volo. Il valore $\sigma _{\min }$ \`e il minimo, lungo la traiettoria, dei Jacobiani $3\times (2+n_k)$ delle dita coinvolte.}}{56}{table.5.6}\protected@file@percent }
+\newlabel{tab:summary_ik}{{5.6}{56}{Sintesi dei task cinematici. L'errore di posizione \`e riferito ai polpastrelli che premono; nel Task~4 \`e l'errore di atterraggio dopo il volo. Il valore $\sigma _{\min }$ \`e il minimo, lungo la traiettoria, dei Jacobiani $3\times (2+n_k)$ delle dita coinvolte}{table.5.6}{}}
+\@setckpt{chapters/ch5}{
+\setcounter{page}{58}
+\setcounter{equation}{11}
+\setcounter{enumi}{8}
+\setcounter{enumii}{0}
+\setcounter{enumiii}{0}
+\setcounter{enumiv}{0}
+\setcounter{footnote}{0}
+\setcounter{mpfootnote}{0}
+\setcounter{part}{0}
+\setcounter{chapter}{5}
+\setcounter{section}{4}
+\setcounter{subsection}{7}
+\setcounter{subsubsection}{0}
+\setcounter{paragraph}{0}
+\setcounter{subparagraph}{0}
+\setcounter{figure}{7}
+\setcounter{table}{6}
+\setcounter{LT@tables}{0}
+\setcounter{LT@chunks}{0}
+\setcounter{parentequation}{0}
+\setcounter{lstnumber}{4}
+\setcounter{AlgoLine}{18}
+\setcounter{algocfline}{2}
+\setcounter{algocfproc}{2}
+\setcounter{algocf}{2}
+\setcounter{section@level}{2}
+\setcounter{Item}{8}
+\setcounter{Hfootnote}{0}
+\setcounter{bookmark@seq@number}{78}
+\setcounter{lstlisting}{0}
+}

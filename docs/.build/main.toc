@@ -1,0 +1,146 @@
+\babel@toc {italian}{}\relax 
+\babel@toc {italian}{}\relax 
+\contentsline {chapter}{\numberline {1}Introduzione e scopo del progetto}{1}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Stato dell'arte}{1}{section.1.1}%
+\contentsline {subsection}{\numberline {1.1.1}RoboPianist e il Reinforcement Learning}{1}{subsection.1.1.1}%
+\contentsline {subsection}{\numberline {1.1.2}Apprendimento autonomo: il caso della USC Viterbi}{2}{subsection.1.1.2}%
+\contentsline {subsection}{\numberline {1.1.3}Apprendimento data-driven per task atletici dinamici}{3}{subsection.1.1.3}%
+\contentsline {subsection}{\numberline {1.1.4}Un approccio bio-ispirato}{4}{subsection.1.1.4}%
+\contentsline {subsection}{\numberline {1.1.5}Pianobot: la pianificazione della traiettoria}{5}{subsection.1.1.5}%
+\contentsline {section}{\numberline {1.2}Motivazione della scelta}{6}{section.1.2}%
+\contentsline {subsection}{\numberline {1.2.1}L'esecuzione pianistica come benchmark per la robotica}{6}{subsection.1.2.1}%
+\contentsline {subsection}{\numberline {1.2.2}Obiettivi del progetto}{7}{subsection.1.2.2}%
+\contentsline {chapter}{\numberline {2}Modellazione cinematica e statica}{8}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Cinematica diretta}{8}{section.2.1}%
+\contentsline {subsection}{\numberline {2.1.1}Catena cinematica aperta}{9}{subsection.2.1.1}%
+\contentsline {subsection}{\numberline {2.1.2}Architettura della catena cinematica}{9}{subsection.2.1.2}%
+\contentsline {subsection}{\numberline {2.1.3}Applicazione di D-H}{11}{subsection.2.1.3}%
+\contentsline {paragraph}{Criteri di validazione geometrica.}{11}{section*.2}%
+\contentsline {subsection}{\numberline {2.1.4}Catena del polso}{12}{subsection.2.1.4}%
+\contentsline {paragraph}{Matrici elementari.}{13}{section*.3}%
+\contentsline {subsection}{\numberline {2.1.5}Catena cinematica del mignolo}{13}{subsection.2.1.5}%
+\contentsline {subsection}{\numberline {2.1.6}Catene delle dita intermedie}{14}{subsection.2.1.6}%
+\contentsline {subsection}{\numberline {2.1.7}Catena del pollice}{15}{subsection.2.1.7}%
+\contentsline {subsection}{\numberline {2.1.8}Spazio dei giunti}{16}{subsection.2.1.8}%
+\contentsline {section}{\numberline {2.2}Cinematica differenziale}{18}{section.2.2}%
+\contentsline {subsection}{\numberline {2.2.1}Jacobiano analitico e geometrico}{18}{subsection.2.2.1}%
+\contentsline {subsection}{\numberline {2.2.2}Calcolo sistematico dello Jacobiano geometrico}{18}{subsection.2.2.2}%
+\contentsline {paragraph}{Estensione alle strutture ramificate.}{19}{section*.4}%
+\contentsline {subsection}{\numberline {2.2.3}Singolarità cinematiche}{20}{subsection.2.2.3}%
+\contentsline {subsection}{\numberline {2.2.4}Analisi della ridondanza}{20}{subsection.2.2.4}%
+\contentsline {section}{\numberline {2.3}Cinematica inversa}{21}{section.2.3}%
+\contentsline {subsection}{\numberline {2.3.1}Inversione differenziale con smorzamento}{21}{subsection.2.3.1}%
+\contentsline {paragraph}{Jacobiano utilizzato.}{22}{section*.5}%
+\contentsline {subsection}{\numberline {2.3.2}Sfruttamento della ridondanza}{22}{subsection.2.3.2}%
+\contentsline {subsection}{\numberline {2.3.3}Limiti articolari e vincoli unilaterali}{22}{subsection.2.3.3}%
+\contentsline {subsection}{\numberline {2.3.4}Cinematica inversa multi-catena}{23}{subsection.2.3.4}%
+\contentsline {subsection}{\numberline {2.3.5}Inseguimento di traiettorie}{23}{subsection.2.3.5}%
+\contentsline {section}{\numberline {2.4}Statica e dualità cineto-statica}{25}{section.2.4}%
+\contentsline {subsection}{\numberline {2.4.1}Principio dei lavori virtuali}{25}{subsection.2.4.1}%
+\contentsline {subsection}{\numberline {2.4.2}Statica con gravità e forze di contatto}{25}{subsection.2.4.2}%
+\contentsline {paragraph}{Struttura ramificata.}{25}{section*.6}%
+\contentsline {paragraph}{Singolarità e statica.}{25}{section*.7}%
+\contentsline {section}{\numberline {2.5}Ellissoidi di manipolabilità}{26}{section.2.5}%
+\contentsline {subsection}{\numberline {2.5.1}Ellissoide di manipolabilità in velocità}{26}{subsection.2.5.1}%
+\contentsline {subsection}{\numberline {2.5.2}Ellissoide di manipolabilità in forza}{26}{subsection.2.5.2}%
+\contentsline {subsection}{\numberline {2.5.3}Risultati per i polpastrelli di RoboLiszt}{26}{subsection.2.5.3}%
+\contentsline {paragraph}{Discussione.}{27}{section*.8}%
+\contentsline {chapter}{\numberline {3}Modellazione dinamica}{29}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Equazioni del moto}{29}{section.3.1}%
+\contentsline {section}{\numberline {3.2}Formulazione di Lagrange}{30}{section.3.2}%
+\contentsline {paragraph}{Scelta implementativa.}{30}{section*.9}%
+\contentsline {section}{\numberline {3.3}Formulazione ricorsiva di Newton--Eulero}{30}{section.3.3}%
+\contentsline {paragraph}{Ricorsione in avanti (cinematica).}{30}{section*.10}%
+\contentsline {paragraph}{Ricorsione all'indietro (forze).}{31}{section*.11}%
+\contentsline {paragraph}{Base in moto.}{31}{section*.12}%
+\contentsline {section}{\numberline {3.4}Dinamica diretta e inversa; modello utilizzato}{32}{section.3.4}%
+\contentsline {paragraph}{Dinamica inversa.}{32}{section*.13}%
+\contentsline {paragraph}{Dinamica diretta.}{32}{section*.14}%
+\contentsline {subsection}{\numberline {3.4.1}Parametri inerziali del modello}{32}{subsection.3.4.1}%
+\contentsline {subsection}{\numberline {3.4.2}Verifica numerica}{32}{subsection.3.4.2}%
+\contentsline {paragraph}{Condizionamento.}{33}{section*.15}%
+\contentsline {section}{\numberline {3.5}Ellissoide di manipolabilità dinamica}{33}{section.3.5}%
+\contentsline {chapter}{\numberline {4}Controllo del moto e della forza}{35}{chapter.4}%
+\contentsline {paragraph}{Condizioni delle simulazioni.}{35}{section*.16}%
+\contentsline {section}{\numberline {4.1}Controllo nello spazio dei giunti e nello spazio operativo}{35}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Controllo nello spazio dei giunti}{35}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Controllo nello spazio operativo}{36}{subsection.4.1.2}%
+\contentsline {subsection}{\numberline {4.1.3}Confronto in spazio libero}{36}{subsection.4.1.3}%
+\contentsline {section}{\numberline {4.2}Controllo di interazione}{37}{section.4.2}%
+\contentsline {subsection}{\numberline {4.2.1}Il contatto come ambiente rigido}{37}{subsection.4.2.1}%
+\contentsline {subsection}{\numberline {4.2.2}Simulazione}{38}{subsection.4.2.2}%
+\contentsline {paragraph}{Conclusione.}{39}{section*.17}%
+\contentsline {section}{\numberline {4.3}Controllo di impedenza}{39}{section.4.3}%
+\contentsline {subsection}{\numberline {4.3.1}Il dito come sistema massa--molla--smorzatore}{39}{subsection.4.3.1}%
+\contentsline {subsection}{\numberline {4.3.2}Scelta dei parametri}{39}{subsection.4.3.2}%
+\contentsline {subsection}{\numberline {4.3.3}Risultati}{40}{subsection.4.3.3}%
+\contentsline {paragraph}{Robustezza all'incertezza sull'altezza del tasto.}{40}{section*.18}%
+\contentsline {paragraph}{Smorzamento e urto.}{40}{section*.19}%
+\contentsline {paragraph}{Limiti dell'impedenza.}{40}{section*.20}%
+\contentsline {section}{\numberline {4.4}Controllo ibrido forza/posizione}{41}{section.4.4}%
+\contentsline {subsection}{\numberline {4.4.1}Il controllore di RoboLiszt}{41}{subsection.4.4.1}%
+\contentsline {paragraph}{Fasi.}{41}{section*.21}%
+\contentsline {paragraph}{Leggi.}{41}{section*.22}%
+\contentsline {paragraph}{Frequenza di controllo.}{42}{section*.23}%
+\contentsline {paragraph}{Taratura e validazione.}{42}{section*.24}%
+\contentsline {subsection}{\numberline {4.4.2}Risultati}{42}{subsection.4.4.2}%
+\contentsline {paragraph}{Forza.}{43}{section*.25}%
+\contentsline {paragraph}{Posizione laterale e robustezza.}{43}{section*.26}%
+\contentsline {paragraph}{Tocco dinamico.}{43}{section*.27}%
+\contentsline {paragraph}{Limiti.}{44}{section*.28}%
+\contentsline {section}{\numberline {4.5}Sintesi}{44}{section.4.5}%
+\contentsline {chapter}{\numberline {5}Architettura software e pianificazione}{45}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Architettura del sistema}{45}{section.5.1}%
+\contentsline {paragraph}{Moduli.}{45}{section*.29}%
+\contentsline {paragraph}{Flusso dei dati.}{45}{section*.30}%
+\contentsline {paragraph}{Verifiche automatiche.}{45}{section*.31}%
+\contentsline {paragraph}{Integrazione con ROS~2 e Gazebo.}{46}{section*.32}%
+\contentsline {section}{\numberline {5.2}Implementazione Computazionale del Modello Multicorpo}{46}{section.5.2}%
+\contentsline {section}{\numberline {5.3}Modello fisico e configurazione URDF}{47}{section.5.3}%
+\contentsline {subsection}{\numberline {5.3.1}Dalla convenzione DH all'URDF}{47}{subsection.5.3.1}%
+\contentsline {paragraph}{Parametri inerziali nell'URDF.}{48}{section*.33}%
+\contentsline {subsection}{\numberline {5.3.2}Carrello, giunti e controllo}{48}{subsection.5.3.2}%
+\contentsline {subsection}{\numberline {5.3.3}Mondo con la tastiera}{49}{subsection.5.3.3}%
+\contentsline {subsection}{\numberline {5.3.4}Verifica del modello URDF}{49}{subsection.5.3.4}%
+\contentsline {section}{\numberline {5.4}Definizione dei task e generazione delle traiettorie}{50}{section.5.4}%
+\contentsline {subsection}{\numberline {5.4.1}Impostazione comune}{50}{subsection.5.4.1}%
+\contentsline {paragraph}{Sistema di riferimento della tastiera.}{50}{section*.34}%
+\contentsline {paragraph}{Postura di partenza.}{50}{section*.35}%
+\contentsline {paragraph}{Schema di generazione delle traiettorie.}{51}{section*.36}%
+\contentsline {subsection}{\numberline {5.4.2}Task 1: movimento in spazio libero (gesto di saluto)}{51}{subsection.5.4.2}%
+\contentsline {subsection}{\numberline {5.4.3}Task 2: pressione di un singolo tasto}{52}{subsection.5.4.3}%
+\contentsline {subsection}{\numberline {5.4.4}Task 3: esecuzione di un accordo}{52}{subsection.5.4.4}%
+\contentsline {subsection}{\numberline {5.4.5}Task 4: locomozione del polso e salto d'ottava}{53}{subsection.5.4.5}%
+\contentsline {subsection}{\numberline {5.4.6}Task 5: controllo dinamico del tocco}{56}{subsection.5.4.6}%
+\contentsline {subsection}{\numberline {5.4.7}Sintesi dei risultati}{56}{subsection.5.4.7}%
+\contentsline {chapter}{\numberline {6}Validazione sperimentale e risultati}{58}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Validazione dei task cinematici}{58}{section.6.1}%
+\contentsline {subsection}{\numberline {6.1.1}Errore di inseguimento lungo la traiettoria}{58}{subsection.6.1.1}%
+\contentsline {subsection}{\numberline {6.1.2}Regolarità e rispetto dei vincoli}{59}{subsection.6.1.2}%
+\contentsline {subsection}{\numberline {6.1.3}Robustezza su obiettivi casuali}{59}{subsection.6.1.3}%
+\contentsline {paragraph}{Limiti della validazione.}{59}{section*.37}%
+\contentsline {section}{\numberline {6.2}Applicazione della dinamica inversa ai task}{59}{section.6.2}%
+\contentsline {section}{\numberline {6.3}Interazione cineto-statica con la tastiera}{60}{section.6.3}%
+\contentsline {section}{\numberline {6.4}Validazione del controllo dinamico del tocco}{62}{section.6.4}%
+\contentsline {subsection}{\numberline {6.4.1}Simulazione a contatto con il modello a corpi rigidi}{62}{subsection.6.4.1}%
+\contentsline {paragraph}{Risultati.}{62}{section*.38}%
+\contentsline {paragraph}{Confronto con il modello semplificato.}{62}{section*.39}%
+\contentsline {paragraph}{Frequenza di controllo e sensibilità.}{63}{section*.40}%
+\contentsline {paragraph}{Limiti.}{63}{section*.41}%
+\contentsline {subsection}{\numberline {6.4.2}Integrazione con Gazebo}{63}{subsection.6.4.2}%
+\contentsline {paragraph}{Cosa è stato verificato.}{64}{section*.42}%
+\contentsline {paragraph}{Cosa non è stato verificato.}{64}{section*.43}%
+\contentsline {paragraph}{Protocollo di validazione previsto.}{64}{section*.44}%
+\contentsline {chapter}{\numberline {7}Conclusioni e sviluppi futuri}{65}{chapter.7}%
+\contentsline {section}{\numberline {7.1}Traguardi raggiunti}{65}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Limiti architetturali e del lavoro}{66}{section.7.2}%
+\contentsline {paragraph}{Gradi di libertà del polso.}{66}{section*.45}%
+\contentsline {paragraph}{Parametri ipotizzati.}{66}{section*.46}%
+\contentsline {paragraph}{Modello dinamico ridotto.}{66}{section*.47}%
+\contentsline {paragraph}{Taratura e validazione del controllore.}{66}{section*.48}%
+\contentsline {paragraph}{Semplificazioni del modello.}{66}{section*.49}%
+\contentsline {paragraph}{Gazebo.}{66}{section*.50}%
+\contentsline {section}{\numberline {7.3}Sviluppi futuri}{66}{section.7.3}%
+\contentsline {chapter}{Bibliografia}{68}{chapter*.51}%
+\contentsline {chapter}{Elenco delle figure}{70}{chapter*.52}%
+\contentsline {chapter}{Elenco delle tabelle}{72}{chapter*.53}%

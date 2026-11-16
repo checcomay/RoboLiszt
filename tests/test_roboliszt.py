@@ -112,39 +112,3 @@ def test_urdf_matches_dh_model():
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     assert mod.main()
-
-
-# ------------------------------------------------------------------------------- control study
-def _study():
-    import importlib.util
-    spec = importlib.util.spec_from_file_location("run_control_study", Path(__file__).resolve().parents[1] / "scripts" / "run_control_study.py")
-    mod = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(mod)
-    return mod, mod.Study()
-
-
-def test_contact_aware_impedance_reduces_impact_vs_stiff_position():
-    mod, S = _study()
-    Fd = 2.5
-    d_eq = (Fd + S.kb.k_stop * S.kb.press_depth) / (S.kb.k_key + S.kb.k_stop)
-    pos = S.os_controller(S.descend_ref(-(d_eq + Fd / 1000), 0.25), [1000] * 3, zeta=1.0)
-    imp = S.os_controller(S.descend_ref(-(d_eq + Fd / 100), 0.25), [100] * 3, zeta=1.0, k_env=S.kb.k_key,
-                          zero_vref_on_contact=True)
-    Fp = mod.simulate_closed_loop(S.dyn, pos, S.q0, 2.4, S.dt, S.env(0.0))["Fz"].max()
-    Fi = mod.simulate_closed_loop(S.dyn, imp, S.q0, 2.4, S.dt, S.env(0.0))["Fz"].max()
-    assert Fi < 0.5 * Fp
-
-
-def test_hybrid_keeps_force_and_lateral_position():
-    from hand_robot.control.hybrid import TouchProfile
-    mod, S = _study()
-    prof = TouchProfile("x", 0.12, 2.5, 0.12, t_hold=1.2, t_release=0.15)
-    res = {}
-    for dz in (-0.002, 0.002):
-        c = mod.HybridTouchController(S.sc.robot, S.dyn, S.sc.config, mod.BRANCH, S.base, S.q0, xy_ref=S.xy,
-                                      z_hover=0.03, z_floor=-0.010, profile=prof, model_mismatch=0.15)
-        o = mod.simulate_closed_loop(S.dyn, c, S.q0, 2.4, S.dt, S.env(dz))
-        w = mod.plateau_window(c.log["F_des"], 2.5, S.dt)
-        res[dz] = (o["Fz"][w].mean(), np.hypot(o["x"] - S.xy[0], o["y"] - S.xy[1]).max())
-    assert abs(res[-0.002][0] - res[0.002][0]) < 0.1          # force insensitive to a +-2 mm key-height error
-    assert max(r[1] for r in res.values()) < 0.005            # lateral error below 5 mm

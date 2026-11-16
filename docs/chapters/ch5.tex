@@ -1,0 +1,360 @@
+\chapter{Architettura software e pianificazione}
+\label{ch:software}
+
+Questo capitolo segna la transizione dalla modellazione matematica puramente teorica all'implementazione pratica del sistema. Nelle sezioni seguenti si illustra l'architettura software alla base di \textit{RoboLiszt}, strutturata sull'integrazione tra Python per la risoluzione algoritmica, ROS per la gestione delle comunicazioni e Gazebo per la simulazione fisica. A partire da questa infrastruttura, vengono definiti nel dettaglio i task operativi che compongono l'esecuzione musicale, descrivendo la generazione delle traiettorie nello spazio operativo e l'impostazione dei parametri fisici per l'interazione con la tastiera del pianoforte.
+
+\section{Architettura del sistema}
+\label{sec:architettura}
+
+Il software è organizzato in livelli, con una configurazione unica come sorgente di verità per i parametri del robot, della tastiera e dei controllori. Modello, cinematica, dinamica, pianificazione, controllo e visualizzazione sono moduli Python indipendenti; gli script di esecuzione compongono tali moduli e producono traiettorie, grafici e metriche; un generatore produce a partire dalla stessa configurazione i file per la simulazione in Gazebo.
+
+\paragraph{Moduli.} La Tabella~\ref{tab:moduli} elenca i moduli e le loro responsabilità.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|p{9.5cm}|}
+        \hline
+        \textbf{Modulo} & \textbf{Contenuto} \\ \hline \hline
+        \texttt{config} & file \texttt{robot.yaml} (parametri DH, topologia, limiti articolari, tastiera, controllo, parametri inerziali) e relativo caricamento\\
+        \texttt{model} & trasformazione di Denavit--Hartenberg e classe della mano (cinematica diretta ad albero, posizione dei polpastrelli)\\
+        \texttt{kinematics} & Jacobiano analitico, IK a minimi quadrati smorzati multi-catena, indici di singolarità, ellissoidi\\
+        \texttt{dynamics} & modello a corpi rigidi con ricorsione di Newton--Eulero (completo e ridotto al polso e a un dito, usato nella simulazione di contatto); il modello con inerzia uniforme è conservato solo come riferimento\\
+        \texttt{piano} & geometria della tastiera (tasti bianchi), conversione nota--posizione\\
+        \texttt{planning} & leggi orarie a minimo jerk e composizione dei segmenti\\
+        \texttt{control} & statica ($\boldsymbol J^\top\boldsymbol F$) e controllore ibrido posizione/forza\\
+        \texttt{tasks} & i cinque task, con scena comune (base della mano, IK lungo traiettorie)\\
+        \texttt{visualization} & grafici delle traiettorie, delle pose e delle ellissoidi\\ \hline
+    \end{tabular}
+    \caption{Moduli del pacchetto Python.}
+    \label{tab:moduli}
+\end{table}
+
+\paragraph{Flusso dei dati.} Ogni task produce una traiettoria con istanti di campionamento, angoli dei 20 giunti, posizione del carrello e un'etichetta di fase per campione (sollevamento, discesa, mantenimento, ecc.). Le traiettorie sono salvate in formato \texttt{npz} e sono l'interfaccia verso la simulazione: lo stesso file può essere letto dal codice di analisi (dinamica inversa, statica) e dal nodo che invia le traiettorie a Gazebo. Questo disaccoppia la generazione dei movimenti dalla loro esecuzione.
+
+\paragraph{Verifiche automatiche.} Una batteria di 57 test automatici verifica: la coerenza dello Jacobiano analitico con le differenze finite, la convergenza dell'IK e il rispetto dei limiti articolari, la singolarità di confine del dito disteso, la geometria della tastiera, i criteri di accuratezza e di distanza dei task, le proprietà del modello dinamico (gravità come gradiente dell'energia potenziale, matrice d'inerzia definita positiva), la dualità cineto-statica, l'equivalenza tra modello ridotto e modello completo, il controllo del tocco in anello chiuso, la coerenza dell'URDF con il modello DH e il modulo audio.
+
+\paragraph{Integrazione con ROS~2 e Gazebo.} Per la simulazione fisica il progetto include un pacchetto ROS~2 (Jazzy) per Gazebo (Harmonic) con \texttt{ros2\_control}: un generatore scrive l'URDF, il mondo con la tastiera e le configurazioni dei controllori; un nodo invia al controllore di traiettoria in posizione le traiettorie dei Task~1--4; un secondo nodo esegue il controllore del tocco del Task~5 a $1$~kHz con interfaccia in coppia; un terzo sintetizza il suono dei tasti. La geometria e la coerenza inerziale dell'URDF sono verificate in Python (Sezione~\ref{sec:urdf}) e il nodo del Task~5 è provato in anello chiuso sull'impianto ridotto, ma il pacchetto \textbf{non è mai stato eseguito in ROS~2/Gazebo}: i risultati della simulazione fisica non sono quindi disponibili (Sezione~\ref{sec:val_gazebo}).
+
+\section{Implementazione Computazionale del Modello Multicorpo}
+
+Al fine di procedere con la validazione numerica e la simulazione dinamica, l'architettura della mano \textit{RoboLiszt} è stata trasposta in ambiente Python adottando un paradigma di programmazione orientata agli oggetti (OOP). 
+Il sistema multicorpo (\textit{rigid body system}) è stato modellato attraverso una classe dedicata, strutturata per incapsulare nativamente la topologia ad albero del manipolatore e la tabella dei parametri di Denavit-Hartenberg (D-H) ricalibrati per la postura pianistica. 
+
+L'algoritmo di cinematica diretta è stato implementato iterando sulle singole ramificazioni digitali: a partire dal sistema di riferimento inerziale fissato alla base dell'avambraccio, la posa spaziale di ciascun \textit{link} viene determinata computando ricorsivamente i prodotti delle matrici di trasformazione omogenea locali ${}^{i-1}\boldsymbol{T}_i(q_i)$. 
+Tale infrastruttura software non solo definisce rigorosamente la geometria dei corpi rigidi nello spazio tridimensionale, ma costituisce il nucleo computazionale indispensabile per le successive fasi di inversione cinematica, analisi dello Jacobiano e controllo dell'interazione con la tastiera virtuale.
+
+\begin{lstlisting}
+def dh_transform(a: float, alpha: float, d: float, theta: float) -> np.ndarray:
+    """Build the standard DH homogeneous transform."""
+    ca, sa = np.cos(alpha), np.sin(alpha)
+    ct, st = np.cos(theta), np.sin(theta)
+
+    return np.array(
+        [
+            [ct, -st * ca, st * sa, a * ct],
+            [st, ct * ca, -ct * sa, a * st],
+            [0,0, sa, ca, d],
+            [0,0, 0,0, 0,0, 1,0],
+        ],
+        dtype=float,
+    )
+\end{lstlisting}
+
+
+
+
+Il calcolo della cinematica diretta per la topologia ramificata del manipolatore è governato da un processo iterativo. Come evidenziato dallo \textit{snippet} di codice, l'algoritmo esplora sequenzialmente ogni catena digitale (\texttt{branch}) e, per ciascun giunto $i$, ne calcola la posa globale in modo ricorsivo. 
+\begin{lstlisting}
+        for branch in self.branches.values():
+            for joint in branch:
+                T[joint] = T[self.parent[joint]] @  self.local_transform(joint, q)
+\end{lstlisting}
+Dal punto di vista analitico, l'istruzione implementa l'equazione fondamentale:
+\[
+    \boldsymbol{T}_i^0(q) = \boldsymbol{T}_{p(i)}^0(q) \, \boldsymbol{T}_i^{p(i)}(q_i)
+\]
+dove $\boldsymbol{T}_i^0$ (ovvero \texttt{T[joint]}) rappresenta la matrice di trasformazione omogenea globale del giunto corrente rispetto al sistema inerziale, $\boldsymbol{T}_{p(i)}^0$ (\texttt{T[self.parent[joint]]}) è la posa globale del giunto genitore, e $\boldsymbol{T}_i^{p(i)}(q_i)$ (\texttt{self.local\_transform}) è la trasformazione locale dipendente dalla coordinata articolare. L'operatore \texttt{@} esegue il prodotto matriciale, assicurando che il sistema di riferimento di ogni dito venga correttamente propagato a partire dal nodo di diramazione sul polso fino ad arrivare agli \textit{end-effector} (i polpastrelli).
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.5\linewidth]{kinematics/robot_static.png}
+    \caption[Rappresentazione grafica e mesh 3D del modello multicorpo di RoboLiszt in ambiente di simulazione.]
+    {Rappresentazione grafica del modello multicorpo di \textit{RoboLiszt} generata dall'ambiente Python. 
+    A sinistra, lo scheletro cinematico (wireframe) che illustra la topologia ad albero e le terne di riferimento calcolate ricorsivamente; a destra, la sovrapposizione delle mesh 3D associate a ciascun \textit{link} per la verifica visiva degli ingombri e delle potenziali collisioni.}
+    \label{fig:robot_static}
+\end{figure}
+
+\section{Modello fisico e configurazione URDF}
+\label{sec:urdf}
+
+\subsection{Dalla convenzione DH all'URDF}
+
+La convenzione di Denavit--Hartenberg standard usata nel modello è
+\begin{equation}
+    {}^{i-1}\boldsymbol T_i=\boldsymbol R_z(\vartheta_i)\,\boldsymbol T_z(d_i)\,\boldsymbol T_x(a_i)\,\boldsymbol R_x(\alpha_i)
+\end{equation}
+e applica prima la rotazione di giunto e poi la parte costante $\boldsymbol F_i=\boldsymbol T_z(d_i)\boldsymbol T_x(a_i)\boldsymbol R_x(\alpha_i)$, mentre in URDF ogni giunto applica prima la trasformazione fissa \texttt{origin} e poi la rotazione intorno al proprio asse. L'ordine è dunque inverso e la mappatura non è immediata: il frame di un corpo URDF non coincide con la terna DH dello stesso indice. Si pone
+\begin{equation}
+    \texttt{origin}_i=\boldsymbol F_{\pi(i)}\,\boldsymbol R_z(\vartheta_{i,0}),\qquad \boldsymbol F_0=\boldsymbol I
+    \label{eq:urdf_origin}
+\end{equation}
+con $\pi(i)$ genitore del giunto $i$, asse di rotazione $z$ e angolo $q_i$. Detta $\boldsymbol L_i$ la terna del corpo URDF dopo la rotazione, la terna DH $i$ si ottiene come
+\begin{equation}
+    {}^{0}\boldsymbol T_i=\boldsymbol L_i\,\boldsymbol F_i
+\end{equation}
+Il polpastrello è un corpo fisso collegato con origine $\boldsymbol F_{n}\boldsymbol T_x(L_{\rm tip})$, con $n$ ultimo giunto del ramo. Questa scelta fa sì che i rami che partono da $J_2$ (cinque figli) e la presenza di offset $\vartheta_{i,0}$ non richiedano trattamenti particolari.
+
+\paragraph{Parametri inerziali nell'URDF.} Baricentro e tensore d'inerzia sono noti nella terna DH $i$ (Capitolo~\ref{ch:dynamics}) e vanno espressi in $\boldsymbol L_i$: con $\boldsymbol R_i=\boldsymbol R_x(\alpha_i)$ e $\boldsymbol F_i$ come sopra,
+\begin{equation}
+    \boldsymbol c^{L}_i=\boldsymbol R_i\,\boldsymbol c_i+\begin{bmatrix}a_i\\0\\d_i\end{bmatrix},\qquad
+    \boldsymbol I^{L}_i=\boldsymbol R_i\,\boldsymbol I_i\,\boldsymbol R_i^\top
+\end{equation}
+Poiché l'URDF usa la stessa ripartizione di massa del modello dinamico, le coppie calcolate dalla ricorsione di Newton--Eulero e quelle che userebbe il simulatore sono riferite alla stessa struttura.
+
+\subsection{Carrello, giunti e controllo}
+
+La base della mano è portata da tre giunti prismatici in serie lungo $x$, $y$, $z$ (il \emph{carrello}), con limiti di velocità tratti dalla configurazione; il sistema di riferimento del mondo coincide con quello della tastiera. I 20 giunti rotoidali hanno limiti di posizione dal file di configurazione, un limite di coppia di $1{,}0$~N$\cdot$m per il polso e $0{,}1$~N$\cdot$m per le dita (ipotesi) e un attrito viscoso. Per \texttt{ros2\_control} i giunti espongono un'interfaccia di comando in posizione (URDF per i Task~1--4); una seconda variante dell'URDF espone un'interfaccia in coppia, come base per l'eventuale trasposizione del Task~5. La sola geometria di collisione dei polpastrelli è una sfera di raggio $7{,}5$~mm.
+
+\subsection{Mondo con la tastiera}
+
+La tastiera è composta da 22 tasti bianchi (da C3 a C6) e da 15 tasti neri; i tasti neri sono presenti solo nel mondo di simulazione e nel modulo audio, mentre i task suonano soltanto tasti bianchi. Ogni tasto è un parallelepipedo collegato alla base con un giunto prismatico verticale con corsa di $8$~mm, molla di rigidezza $300$~N/m e smorzatore di $5$~N$\cdot$s/m, valori uguali a quelli del modello di contatto della simulazione di Python. Lo spostamento dei tasti è pubblicato dal plugin di stato dei giunti: dallo spostamento $d$ e dalla velocità è possibile ricostruire la forza di contatto, $F=k\,d+c\,\dot d$, che è la grandezza misurata dal controllo di forza.
+
+\subsection{Verifica del modello URDF}
+
+La mappatura è stata verificata senza ROS, con un valutatore cinematico indipendente scritto per leggere l'URDF: il file è letto con un parser XML, le trasformazioni \texttt{origin} e le rotazioni o traslazioni di giunto sono composte indipendentemente dal modello DH, e i risultati sono confrontati con quelli del modello per 25 configurazioni casuali entro l'80\% dei limiti, con carrello in posizioni casuali. I risultati (Tabella~\ref{tab:urdf_check}) sono dell'ordine delle cifre significative scritte nel file ($10^{-9}$).
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|}
+        \hline
+        Grandezza confrontata & Errore massimo\\ \hline \hline
+        Posizione delle 20 terne DH & $1{,}0\cdot10^{-9}$ m\\
+        Orientamento delle 20 terne DH & $9{,}4\cdot10^{-9}$\\
+        Posizione dei 5 polpastrelli & $1{,}1\cdot10^{-9}$ m\\
+        Massa totale & $1{,}3\cdot10^{-10}$ kg\\
+        Baricentro globale e dei corpi & $9{,}7\cdot10^{-10}$ m\\
+        Tensori d'inerzia dei corpi (assi base) & $4{,}6\cdot10^{-13}$ kg$\cdot$m$^2$\\ \hline
+    \end{tabular}
+    \caption{Coerenza dell'URDF generato con il modello DH e con il modello inerziale (25 configurazioni casuali, carrello compreso).}
+    \label{tab:urdf_check}
+\end{table}
+
+Questa verifica garantisce la correttezza \emph{geometrica e inerziale} del file ma non il comportamento nel simulatore: il caricamento in Gazebo, la stabilità numerica del contatto, la risposta dei controllori e le impostazioni del solutore fisico non sono state ancora provate (Sezione~\ref{sec:val_gazebo}).
+
+\clearpage
+\section{Definizione dei task e generazione delle traiettorie}
+\label{sec:ik_tasks}
+
+In questa sezione si illustra come l'algoritmo di cinematica inversa del Paragrafo~\ref{sec:inverse_kinematics} viene impiegato nei cinque task definiti per \textit{RoboLiszt}. 
+A causa dell'elevata dimensionalità del manipolatore e della natura intrinsecamente ramificata delle sue catene, la gestione delle traiettorie e l'attuazione dei giunti richiedono la definizione di precise strategie di controllo.
+
+Le simulazioni che verranno condotte si prefiggono di testare il manipolatore in diversi scenari operativi, valutandone il comportamento sia in condizioni di moto libero (\textit{free-space}) sia durante l'interazione fisica con l'ambiente (la tastiera del pianoforte).
+
+I risultati provengono dalla simulazione cinematica in Python (passo di campionamento $\Delta t=5$~ms); tutti i valori numerici sono ottenuti con i parametri geometrici e i limiti articolari del file di configurazione del robot.
+
+\subsection{Impostazione comune}
+
+\paragraph{Sistema di riferimento della tastiera.} Si adotta una terna $\mathcal F_K$ con l'asse $x$ lungo il tasto (dal bordo anteriore verso il fondo), l'asse $y$ lungo la tastiera (crescente con l'altezza della nota, $y=0$ al centro del tasto C4) e l'asse $z$ verso l'alto, con $z=0$ sulla superficie dei tasti a riposo. La terna base della mano ($\mathcal F_0$) ha la stessa orientazione di $\mathcal F_K$ e origine in $\boldsymbol b=[b_x\; b_y\; b_z]^\top$, così che
+\begin{equation}
+    \boldsymbol p^{K}=\boldsymbol p^{0}+\boldsymbol b
+    \label{eq:base_shift}
+\end{equation}
+e il compito si riconduce al caso di base fissa sottraendo $\boldsymbol b$ ai punti obiettivo. La posizione $\boldsymbol b$ è costante nei Task~1--3 e~5, mentre nel Task~4 è comandata dal carrello (Sezione~\ref{subsec:task4}). Si modellano solo i tasti bianchi, di larghezza $w=23{,}5$~mm e profondità 150~mm, con corsa di fondo $\delta=8$~mm. I parametri usati sono riassunti nella Tabella~\ref{tab:task_params}.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|l|}
+        \hline
+        Parametro & Valore & Significato\\ \hline \hline
+        $w$ & 23,5~mm & larghezza del tasto bianco\\
+        $\delta$ & 8~mm & corsa del tasto (fondo corsa a $z=-\delta$)\\
+        $z_s$ & 30~mm & quota di sicurezza (inizio discesa)\\
+        $z_h$ & 20~mm & quota di riposo delle dita \\
+        $z_{\min}$ & 8~mm & quota minima delle dita che non suonano\\
+        $b_z$ & 50~mm & altezza della base della mano in esecuzione\\
+        $x_k$ & 0,10--0,50 profondit\`a & punto di pressione sul tasto del dito $k$\\
+        $\varepsilon$ & 0,1~mm & tolleranza dell'algoritmo di IK\\ \hline
+    \end{tabular}
+    \caption{Parametri geometrici e di compito. Il punto di pressione dipende dal dito: le dita pi\`u corte (pollice, mignolo) suonano pi\`u vicino al bordo anteriore del tasto.}
+    \label{tab:task_params}
+\end{table}
+
+\paragraph{Postura di partenza.} Tutti i task, tranne il saluto, partono da una postura \textit{ready} in cui i cinque polpastrelli sono sospesi alla quota $z_h$ sopra cinque tasti adiacenti (C4, D4, E4, F4, G4, dal pollice al mignolo). Essa è ottenuta risolvendo il problema impilato a 5 dita ($15$ equazioni, $20$ incognite) con peso ridotto sui giunti del polso, in modo che la palma si orienti sopra la tastiera e le dita restino moderatamente flesse. Tutte le traiettorie successive utilizzano questa postura come condizione iniziale e come postura di riferimento $\boldsymbol q_{\rm rest}$ del termine nel nucleo.
+
+\paragraph{Schema di generazione delle traiettorie.} Per ogni task si definiscono nello spazio operativo le leggi orarie dei polpastrelli $\boldsymbol p_k^d(t)$, a minimo jerk (Sezione~\ref{sec:inverse_kinematics}), e si risolve l'IK a ogni campione con \textit{warm start}. Nei task di pressione la quota del dito $k$ che suona segue la legge a tratti
+\begin{equation}
+    z_k(t)=
+    \begin{cases}
+        z_h+(z_s-z_h)\,s\!\left(\tfrac{t}{T_1}\right) & \text{sollevamento}\\[0.5ex]
+        z_s+(-\delta-z_s)\,s\!\left(\tfrac{t-t_1}{T_2}\right) & \text{discesa}\\[0.5ex]
+        -\delta & \text{mantenimento}\\[0.5ex]
+        -\delta+(z_s+\delta)\,s\!\left(\tfrac{t-t_3}{T_4}\right) & \text{rilascio}\\[0.5ex]
+        z_s+(z_h-z_s)\,s\!\left(\tfrac{t-t_4}{T_5}\right) & \text{rientro}
+    \end{cases}
+    \label{eq:press_profile}
+\end{equation}
+con $s(\cdot)$ il polinomio di quinto grado e durate $T_1=0{,}30$, $T_2=0{,}30$, $T_3=0{,}20$, $T_4=0{,}30$, $T_5=0{,}25$~s (totale $1{,}45$~s), mentre $x$ e $y$ restano fissi al centro del tasto. In termini di cinematica differenziale, la generazione avviene al \textbf{primo ordine}: le velocità articolari sono ricavate come $\dot{\boldsymbol q}=\boldsymbol J^{\#}\dot{\boldsymbol p}^d$ implicitamente dalla successione di soluzioni, e le accelerazioni sono limitate dalla regolarità $C^2$ della legge oraria. Non è quindi impiegato un algoritmo di inversione del secondo ordine (con il termine $\dot{\boldsymbol J}\dot{\boldsymbol q}$): la traiettoria è già pianificata con accelerazioni nulle agli estremi e non è richiesto un inseguimento di accelerazione cartesiana.
+
+\subsection{Task 1: movimento in spazio libero (gesto di saluto)}
+
+Il primo task costituisce una validazione preliminare della cinematica e del controllo decentralizzato. 
+Il manipolatore, partendo da una posa di riposo, esegue un semplice gesto di saluto che comporta l'apertura e la chiusura coordinata delle cinque dita nello spazio libero.
+In tale gesto non vi è contatto né un vincolo cartesiano da rispettare: il movimento è assegnato direttamente nello spazio dei giunti. 
+La cinematica inversa interviene soltanto per generare la postura \textit{ready} iniziale, mentre la cinematica diretta serve a verificare la traiettoria dei polpastrelli e la distanza dalle singolarità.
+
+Il gesto è composto da tre fasi. 
+Nella fase di \textit{sollevamento} (1~s) la mano passa dalla postura \textit{ready} alla postura a palmo aperto, con polso in flessione $q_2=-55^\circ$ e i giunti di flessione delle dita a $\vartheta_j=0$ (dito disteso, $q_j=-\vartheta_{j,0}$). Segue l'oscillazione, con deviazione radio-ulnare
+\begin{equation}
+    q_1(t)=A\,w(t)\sin(2\pi f t),\qquad A=25^\circ,\; f=1{,}5~\mathrm{Hz}
+\end{equation}
+e un'onda di flessione che si propaga dal mignolo all'indice,
+\begin{equation}
+    \Delta q_j(t)=-D\,w(t)\left[\tfrac12-\tfrac12\cos\!\left(4\pi f t+\phi_k\right)\right],\qquad D=18^\circ,\;\phi_k=-0{,}7\,k
+\end{equation}
+dove $k$ indica il dito e $w(t)$ \`e un inviluppo a quinto grado che porta a zero ampiezza e velocit\`a all'inizio e alla fine dell'oscillazione. Nell'ultima fase la mano torna alla postura \textit{ready}.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{tasks/task1_wave.png}
+    \caption{Task 1: traiettorie dei polpastrelli nello spazio (sinistra), giunti del polso (centro) e indice di singolarit\`a $\sigma_{\min}$ dello Jacobiano del medio (destra). Le aree colorate distinguono le fasi di sollevamento, oscillazione e abbassamento.}
+    \label{fig:task1}
+\end{figure}
+
+I polpastrelli raggiungono una quota massima di $222$~mm sopra la tastiera e il medio compie una escursione laterale di $128$~mm. La velocit\`a articolare massima \`e $4{,}1$~rad/s e tutti i giunti restano ad almeno $18^\circ$ dai limiti. L'indice di singolarit\`a (Figura~\ref{fig:task1}, a destra) mostra un andamento coerente con l'analisi teorica: con il polso sollevato il valore minimo di $\sigma_{\min}$ scende a $0{,}011$ (contro $0{,}073$ nella postura iniziale), perch\'e le dita, avvicinandosi alla verticale, si avvicinano all'asse di rotazione del giunto $J_1$ e la deviazione laterale produce uno spostamento sempre pi\`u piccolo dei polpastrelli. Per questo il gesto \`e eseguito con pitch limitato a $-55^\circ$ e non fino al limite meccanico.
+
+\subsection{Task 2: pressione di un singolo tasto}
+
+Il Task~2 \`e l'applicazione di base della cinematica inversa: dato un tasto, il polpastrello di un dito deve percorrere la legge~\eqref{eq:press_profile} fino al fondo corsa.
+A ogni campione si risolve
+\begin{equation}
+    \boldsymbol p_{e,k}(\boldsymbol q)=\boldsymbol p_k^d(t)-\boldsymbol b
+\end{equation}
+per il dito $k$ che suona (vincolo bilaterale), con il polso e i giunti delle altre dita nell'insieme delle variabili libere. Le dita che non suonano sono soggette al vincolo unilaterale $z_{e,j}\ge z_{\min}$; il polso e le altre dita sono pesati in modo da muoversi solo se necessario ($w=10$ per il polso).
+
+L'esperimento mostra che il solo dito, con polso fisso, non basta a raggiungere il fondo corsa: l'IK a polso bloccato si arresta con un errore di alcuni decimi di millimetro in prossimit\`a del fondo (la configurazione \`e al limite del raggio d'azione del ramo). Il polso contribuisce con una flessione contenuta (circa $12^\circ$ per il medio), e le dita non coinvolte, che seguono il polso, restano a $7{,}9$~mm dai tasti grazie al vincolo unilaterale. Un risultato analogo si ottiene per ciascun dito (Tabella~\ref{tab:task2}); il pollice, che ha il ramo pi\`u lungo (5 DoF) e suona pi\`u vicino al bordo anteriore, richiede un contributo del polso minimo.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|c|c|c|c|c|}
+        \hline
+        Dito (tasto) & $\dot q_{\max}$ & Margine & $\sigma_{\min}$ & Errore & Distanza & $\Delta q_{1,2}$\\
+         & [rad/s] & min.\ [$^\circ$] & min.\ & [mm] & dita ferme [mm] & polso [$^\circ$]\\ \hline \hline
+        Pollice (C4) & 2,3 & 41,8 & 0,035 & 0,07 & 16,7 & 1,5\\
+        Indice (D4) & 5,6 & 35,6 & 0,058 & 0,07 & 7,9 & 13,6\\
+        Medio (E4) & 3,8 & 42,8 & 0,068 & 0,07 & 7,9 & 11,7\\
+        Anulare (F4) & 6,0 & 33,0 & 0,053 & 0,07 & 7,9 & 14,4\\
+        Mignolo (G4) & 8,1 & 39,0 & 0,054 & 0,08 & 7,9 & 16,0\\ \hline
+    \end{tabular}
+    \caption{Task 2: pressione di un singolo tasto con ciascun dito. Errore: scostamento del polpastrello dal punto di fondo corsa; la penultima colonna \`e la minima quota dei polpastrelli delle dita che non suonano; $\Delta q_{1,2}$ \`e il massimo scostamento del polso dalla postura iniziale.}
+    \label{tab:task2}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.85\linewidth]{tasks/task2_press_middle_E4_tips_z.png}
+    \caption{Task 2: quota dei cinque polpastrelli durante la pressione del tasto E4 con il medio. La linea tratteggiata indica il fondo corsa ($-8$~mm); le aree colorate corrispondono alle fasi della legge~\eqref{eq:press_profile}.}
+    \label{fig:task2_z}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{tasks/task2_pose_middle.png}
+    \caption{Task 2: configurazione della mano a fondo corsa durante la pressione di E4 con il medio (tasto evidenziato).}
+    \label{fig:task2_pose}
+\end{figure}
+
+L'errore di posizione al fondo corsa \`e $0{,}07$--$0{,}08$~mm, coerente con la tolleranza $\varepsilon=0{,}1$~mm. Le velocit\`a articolari massime (fino a $8{,}1$~rad/s per il mignolo) si verificano nella fase di discesa e dipendono dalla durata $T_2$ scelta: rallentando la discesa si riducono proporzionalmente.
+
+\subsection{Task 3: esecuzione di un accordo}
+
+Per l'accordo di do maggiore (C4--E4--G4), eseguito con la diteggiatura 1--3--5 (pollice, medio, mignolo), si utilizza l'IK multi-catena impilata (Paragrafo~\ref{sec:inverse_kinematics}): gli errori dei tre polpastrelli sono risolti congiuntamente in un sistema di $9$ equazioni, con il polso condiviso. 
+Le due dita che non suonano (indice e anulare), che si trovano sopra D4 e F4, sono soggette al vincolo unilaterale $z\ge z_{\min}$, perché il moto del polso li sposterebbe verso i tasti interposti.
+
+Il moto del polso, che contribuisce con una flessione di $16{,}5^\circ$, \`e il termine di coordinazione tra le catene: quando il mignolo scende, il polso ruota e solleva o abbassa tutte le altre dita; i giunti delle dita non coinvolte compensano finch\'e $z\ge z_{\min}$. La Tabella~\ref{tab:task3} confronta le varianti eseguite.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \footnotesize
+    \begin{tabular}{|l|c|c|c|c|c|}
+        \hline
+        Caso & $\dot q_{\max}$ & Errore & $\sigma_{\min}$ & Distanza & $\Delta q_{1,2}$\\
+         & [rad/s] & [mm] & (per dito) & dita ferme [mm] & polso [$^\circ$]\\ \hline \hline
+        Triade C4--E4--G4 & 5,9 & 0,08 & 0,038 & 7,9 & 16,5\\
+        Triade arpeggiata (40~ms) & 6,4 & 0,08 & 0,037 & 7,9 & 16,5\\
+        Triade senza vincolo unilaterale & 4,3 & 0,07 & 0,038 & $-18{,}5$ & 17,6\\
+        Cinque dita C4--G4 & 5,2 & 0,08 & 0,038 & -- & 16,1\\ \hline
+    \end{tabular}
+    \caption{Task 3: varianti dell'accordo. Nel caso senza vincolo unilaterale le dita non coinvolte (indice, anulare) scendono sotto la superficie dei tasti D4 ed F4, premendoli involontariamente. Nel caso a cinque dita non vi sono dita ferme.}
+    \label{tab:task3}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.85\linewidth]{tasks/task3_chord_C4E4G4_tips_z.png}
+    \caption{Task 3: quota dei polpastrelli durante l'esecuzione della triade. Le tre dita che suonano scendono insieme al fondo corsa, mentre indice e anulare restano al di sopra della soglia.}
+    \label{fig:task3_z}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.6\linewidth]{tasks/task3_pose_triad.png}
+    \caption{Task 3: configurazione della mano a fondo corsa durante la triade (tasti C4, E4, G4 evidenziati).}
+    \label{fig:task3_pose}
+\end{figure}
+
+L'errore di posizione resta sotto $0{,}1$~mm per tutte le dita. L'indice di singolarit\`a $\sigma_{\min}$ dei singoli Jacobiani $3\times(2+n_k)$ delle dita che suonano non scende sotto $0{,}037$. Il caso arpeggiato (inizio sfalsato di $40$~ms per dito) mostra che l'IK ricostruisce una postura valida a ogni campione senza modifiche all'algoritmo. Il confronto con il caso senza vincolo unilaterale giustifica la scelta del vincolo: l'accordo viene raggiunto con lo stesso errore, ma in modo non accettabile musicalmente.
+
+\subsection{Task 4: locomozione del polso e salto d'ottava}
+\label{subsec:task4}
+
+Il polso ha soltanto due gradi di libert\`a rotazionali e non pu\`o traslare la base della mano. Per eseguire un salto d'ottava (7 tasti bianchi, $d=164{,}5$~mm) si introduce un carrello virtuale con tre giunti prismatici $(x,y,z)$ che trasla la base $\boldsymbol b$ nella~\eqref{eq:base_shift}. La necessit\`a del carrello \`e stata verificata applicando l'IK alla triade traslata di $k$ tasti con base ferma: l'accordo \`e raggiungibile con la sola rotazione del polso fino a $k=3$ tasti (errore $<0{,}1$~mm), mentre da $k=4$ l'errore sale a $5$~mm e cresce rapidamente (Figura~\ref{fig:task4}, a destra), fino a oltre $200$~mm per $k=14$.
+
+Il salto \`e eseguito in tre fasi: pressione della triade in C4--G4, traslazione del carrello con la mano ferma nella postura raccolta (le dita non cambiano configurazione, quindi non \`e necessaria alcuna IK durante il volo) e pressione della triade un'ottava sopra. Poich\'e la traslazione \`e un multiplo intero della larghezza dei tasti, la postura al termine del volo \`e quella corretta per la nuova posizione, e l'IK della seconda pressione parte gi\`a da una soluzione quasi esatta (errore di atterraggio $0{,}28$~mm). La traiettoria del carrello \`e
+\begin{align}
+    b_y(t)&=b_{y,0}+d\,s(t/T), & b_z(t)&=b_{z,0}+h\sin^2(\pi t/T)
+\end{align}
+con sollevamento $h=35$~mm per evitare il contatto tra le dita e i tasti durante lo spostamento. La durata minima, nel rispetto dei limiti di velocit\`a $v_{\max}=1$~m/s e accelerazione $a_{\max}=12$~m/s$^2$, \`e
+\begin{equation}
+    T=\max\!\left(T_{\min},\;\frac{1{,}875\,d}{v_{\max}},\;\sqrt{\frac{5{,}77\,d}{a_{\max}}}\right)
+\end{equation}
+dove i coefficienti derivano dai valori di picco del polinomio di quinto grado, $\dot s_{\max}=1{,}875/T$ e $\ddot s_{\max}=5{,}77/T^2$. Con $T_{\min}=0{,}35$~s e $d=164{,}5$~mm si ottiene $T=0{,}35$~s, con picco di velocit\`a $0{,}88$~m/s e di accelerazione $8{,}0$~m/s$^2$ (inclusa la componente di sollevamento).
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{tasks/task4_octave_jump.png}
+    \caption{Task 4: moto del carrello (sinistra), posizione laterale dei polpastrelli (centro) ed errore dell'IK della triade traslata di $k$ tasti con sola rotazione del polso (destra: in verde i casi con errore $<0{,}1$~mm). Durante le fasi di pressione indice e anulare, non vincolati lateralmente, seguono il moto del polso entro circa 10~mm.}
+    \label{fig:task4}
+\end{figure}
+
+Durante il volo la quota minima dei polpastrelli \`e $20{,}1$~mm sopra i tasti. La velocit\`a articolare massima dell'intero task ($5{,}9$~rad/s) \`e quella delle due pressioni.
+
+\subsection{Task 5: controllo dinamico del tocco}
+
+Nel Task~5 la cinematica inversa non genera la traiettoria completa: il moto \`e prodotto da un controllo ibrido in posizione e forza (trattato nei capitoli successivi). L'IK fornisce la postura di partenza del controllore e il suo riferimento posturale: dalla soluzione del Task~2 si prende la postura a fondo corsa (polso gi\`a flesso, dita vicine sopra i tasti) e si risolve l'IK per portare il polpastrello del medio alla quota di sicurezza $z_s$ sopra E4, con il polso e le altre dita bloccati. Partire da questa postura \`e necessario: con il polso nella postura \textit{ready} il medio, da solo, non raggiunge il fondo corsa, per il limite di raggio d'azione gi\`a osservato nel Task~2, e la discesa si arresta circa $6$~mm sopra la superficie del tasto.
+
+\subsection{Sintesi dei risultati}
+
+La Tabella~\ref{tab:summary_ik} riassume le prestazioni dell'IK nei cinque task.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|c|c|c|}
+        \hline
+        Task & Durata & Errore di & Margine ai limiti & $\sigma_{\min}$\\
+         & [s] & posizione [mm] & articolari [$^\circ$] & minimo\\ \hline \hline
+        1 -- Saluto & 4,0 & -- & 18,0 & 0,011\\
+        2 -- Tasto singolo (medio) & 1,45 & 0,07 & 42,8 & 0,068\\
+        3 -- Triade & 1,45 & 0,08 & 38,5 & 0,038\\
+        4 -- Salto d'ottava & 3,25 & 0,28 & 38,5 & 0,038\\ \hline
+    \end{tabular}
+    \caption{Sintesi dei task cinematici. L'errore di posizione \`e riferito ai polpastrelli che premono; nel Task~4 \`e l'errore di atterraggio dopo il volo. Il valore $\sigma_{\min}$ \`e il minimo, lungo la traiettoria, dei Jacobiani $3\times(2+n_k)$ delle dita coinvolte.}
+    \label{tab:summary_ik}
+\end{table}
+
+I risultati mostrano che l'algoritmo converge entro la tolleranza in tutti i campioni e per tutti i task. I limiti emersi sono tre: \textit{(i)} con il polso fisso le dita da sole non raggiungono il fondo corsa, per cui il polso deve contribuire con una flessione di circa $12$--$16^\circ$; \textit{(ii)} la configurazione del mignolo \`e la pi\`u gravosa per il polso e per i giunti delle dita adiacenti; \textit{(iii)} il salto d'ottava richiede un grado di libert\`a traslazionale che il polso a due gradi di libert\`a non possiede.

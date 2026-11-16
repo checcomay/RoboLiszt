@@ -1,0 +1,204 @@
+\chapter{Validazione sperimentale e risultati}
+\label{ch:risultati}
+
+In questo capitolo si presentano e si analizzano i dati raccolti durante l'esecuzione dei task pianistici all'interno dell'ambiente di simulazione. La valutazione si concentra inizialmente sull'accuratezza cinematica degli algoritmi, quantificando gli errori di posizionamento dei polpastrelli e l'efficacia dello sfruttamento della ridondanza. Successivamente, l'analisi si estende al comportamento dinamico del manipolatore, esaminando i profili delle coppie articolari generati dalla dinamica inversa e studiando le forze di reazione scambiate tra le dita e i tasti, per validare la capacità del sistema di replicare un tocco pianistico realistico.
+
+Tutti i risultati di questo capitolo provengono dalla simulazione in Python (simulazione cinematica e dinamica) descritta nei capitoli precedenti. La simulazione fisica in Gazebo è trattata nella Sezione~\ref{sec:val_gazebo}, che riporta lo stato delle attività senza riportare risultati non ottenuti. I parametri inerziali sono ipotesi di progetto (Tabella~\ref{tab:inertial}), per cui i valori assoluti di coppia hanno valore indicativo, mentre le proporzioni tra contributi e le tendenze sono più affidabili.
+
+\section{Validazione dei task cinematici}
+\label{sec:val_cinematica}
+
+La definizione dei task e le prestazioni principali sono riportate nella Sezione~\ref{sec:ik_tasks} (Tabelle~\ref{tab:task2}, \ref{tab:task3} e~\ref{tab:summary_ik}). Qui si valida l'algoritmo di cinematica inversa con tre criteri aggiuntivi: l'errore lungo l'\emph{intera} traiettoria (non solo a fondo corsa), la regolarità dei movimenti e la robustezza su obiettivi casuali.
+
+\subsection{Errore di inseguimento lungo la traiettoria}
+
+L'errore è definito come distanza, a ogni campione, tra il polpastrello ottenuto con la cinematica diretta e la posizione desiderata, calcolata sui diti che suonano. La Tabella~\ref{tab:tracking} riporta le statistiche su $291$ campioni per task.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|c|c|}
+        \hline
+        Caso & Medio [mm] & RMS [mm] & Massimo [mm]\\ \hline \hline
+        Task 2: medio (E4) & 0,071 & 0,074 & 0,100\\
+        Task 2: mignolo (G4) & 0,073 & 0,075 & 0,100\\
+        Task 3: triade C4--E4--G4 & 0,069 & 0,072 & 0,100\\ \hline
+    \end{tabular}
+    \caption{Errore di inseguimento dei polpastrelli sulla traiettoria completa (1,45~s, 291 campioni).}
+    \label{tab:tracking}
+\end{table}
+
+L'errore massimo coincide con la tolleranza $\varepsilon=0{,}1$~mm: il criterio di arresto garantisce un errore inferiore a $\varepsilon$ a ogni campione, e lo scarto tipico è di circa $0{,}07$~mm. Un errore di questa entità è trascurabile rispetto al raggio del polpastrello ($7{,}5$~mm) e alla larghezza del tasto ($23{,}5$~mm); il risultato dipende però dalla tolleranza scelta e non dall'accuratezza del modello fisico, che non è stata oggetto di validazione (non è disponibile un riferimento sperimentale).
+
+\subsection{Regolarità e rispetto dei vincoli}
+
+In tutti i task i giunti restano lontani dai limiti (margine minimo: $18{,}0^\circ$ nel saluto, $38{,}5^\circ$ nella triade e nel salto d'ottava) e le velocità articolari massime ($4{,}1$~rad/s nel saluto, $5{,}9$~rad/s nella triade e nel salto) sono compatibili con le velocità limite assunte ($12$~rad/s). La quota delle dita che non suonano resta sopra la soglia di $7{,}9$~mm. Il confronto con la variante senza vincolo unilaterale (Tabella~\ref{tab:task3}) mostra il vantaggio del vincolo: senza di esso, due dita scendono fino a $-18{,}5$~mm sotto la superficie dei tasti adiacenti.
+
+\subsection{Robustezza su obiettivi casuali}
+
+Per valutare l'algoritmo indipendentemente dai task, sono stati generati $100$ obiettivi casuali per tre dita (pollice, medio, mignolo) a partire da configurazioni casuali entro l'80\% dei limiti, in modo che l'obiettivo sia raggiungibile per costruzione, e l'IK multi-catena è stata avviata dalla postura nulla. In tutti i $100$ casi l'algoritmo converge entro $0.1$~mm, in media dopo $19.2$ iterazioni e $11.6$~ms (implementazione Python su un solo thread, massimo $600$ iterazioni). Non è stato valutato il caso di obiettivi irraggiungibili.
+
+\paragraph{Limiti della validazione.} La verifica è puramente cinematica: non sono modellati l'interferenza tra le dita, i tasti neri e la deformazione elastica, e le conclusioni riguardano la raggiungibilità geometrica. Il salto d'ottava è validato rispetto ai limiti del carrello ipotizzati (velocità massima $1$~m/s e accelerazione massima $12$~m/s$^2$, con picchi di $0{,}88$~m/s e $8{,}0$~m/s$^2$) e non rispetto ad attuatori reali.
+
+\section{Applicazione della dinamica inversa ai task}
+\label{sec:val_dinamica}
+
+Le traiettorie dei task cinematici sono state usate come ingresso della dinamica inversa (Sezione~\ref{sec:dir_inv}) per calcolare le coppie richieste. Velocità e accelerazioni articolari sono ottenute dalle traiettorie campionate con un filtro di Savitzky--Golay (finestra di $21$ campioni, polinomio di grado $4$); nel salto d'ottava l'accelerazione del carrello entra come accelerazione della base. Le grandezze riportate sono relative ai giunti attivi: i due giunti del polso e quelli delle dita che suonano.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|cccc|c|}
+        \hline
+        & Totale & \multicolumn{4}{c|}{Contributi (RMS) [mN$\cdot$m]} & Quota\\
+        Task & [mN$\cdot$m] & inerzia & Coriolis & gravità & attrito & gravità\\ \hline \hline
+        2: medio & 94,0 & 7,0 & 0,1 & 93,6 & 1,2 & 93\%\\
+        3: triade & 57,2 & 7,5 & 0,2 & 56,6 & 1,5 & 88\%\\
+        4: salto d'ottava & 60,1 & 20,1 & 0,2 & 56,5 & 1,4 & 74\%\\ \hline
+    \end{tabular}
+    \caption{Valori RMS delle coppie sui giunti attivi e quota del contributo gravitazionale, $\mathrm{RMS}_g/(\mathrm{RMS}_g+\mathrm{RMS}_i+\mathrm{RMS}_c)$. Il totale è mediato sui giunti attivi; il picco sul singolo giunto è più alto (Tabella~\ref{tab:peaks}).}
+    \label{tab:id}
+\end{table}
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \footnotesize
+    \begin{tabular}{|l|c|c|c|}
+        \hline
+        Task & Picco $\tau_2$ (pitch) & Picco $\tau_1$ (deviazione) & Forza sul carrello\\ \hline \hline
+        2: medio & 250 mN$\cdot$m & -- & --\\
+        3: triade & 268 mN$\cdot$m & 71 mN$\cdot$m & --\\
+        4: salto d'ottava & 320 mN$\cdot$m & 276 mN$\cdot$m & $F_y=3{,}3$ N, $F_z=6{,}5$ N\\ \hline
+    \end{tabular}
+    \caption{Coppie di picco sui giunti del polso e forze del carrello. Il peso statico della mano è $4{,}2$~N.}
+    \label{tab:peaks}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{analysis/id_task3.png}
+    \caption{Task 3 (triade): componenti della coppia sul pitch del polso, su un giunto del medio e su un giunto del mignolo.}
+    \label{fig:id_task3}
+\end{figure}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.85\linewidth]{analysis/id_task4.png}
+    \caption{Task 4 (salto d'ottava): forza esercitata dal carrello sulla mano (sinistra) e coppia sul pitch del polso (destra).}
+    \label{fig:id_task4}
+\end{figure}
+
+Il contributo dominante è la gravità: nei task di pressione costituisce l'$88$--$93\%$ della coppia, e il giunto più caricato è il pitch del polso (picco di circa $0.25$--$0.27$~N$\cdot$m), che sostiene il peso della mano. I termini di Coriolis sono trascurabili ($0.1$--$0.2$~mN$\cdot$m RMS) e l'attrito è piccolo. Nel salto d'ottava l'accelerazione laterale del carrello ($8$~m/s$^2$) fa salire il contributo inerziale a $20$~mN$\cdot$m RMS e la coppia di deviazione del polso $\tau_1$ a $276$~mN$\cdot$m, quasi quattro volte quella della triade; la forza laterale del carrello ($3.3$~N) è in accordo con il valore atteso $m_{\rm tot}a\approx 0.43\cdot 8$~N. La forza verticale di picco ($6.5$~N) supera il peso statico ($4.2$~N) per la componente di sollevamento.
+
+\section{Interazione cineto-statica con la tastiera}
+\label{sec:val_statica}
+
+La dualità~\eqref{eq:duality} permette di calcolare, lungo la simulazione di contatto del Task~5 (modello a corpi rigidi, Sezione~\ref{sec:val_controllo}), le coppie di compensazione $\boldsymbol\tau_c=-\boldsymbol J_P^\top\boldsymbol F_c$ associate alla forza di reazione del tasto. La Figura~\ref{fig:statics_touch} mostra la forza e le coppie sui giunti attivi per i tre profili di tocco; il tocco ff è quello con limite di coppia del dito di $0{,}25$~N$\cdot$m (Sezione~\ref{sec:val_controllo}).
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{analysis/statics_touch.png}
+    \caption{Forza di contatto (sopra) e coppie di compensazione $-\boldsymbol J^\top\boldsymbol F_c$ (sotto) sui giunti attivi del medio (J1, J2: polso; J10--J12: dito) per i profili pp, mf e ff.}
+    \label{fig:statics_touch}
+\end{figure}
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \begin{tabular}{|l|c|cccc|c|}
+        \hline
+        Profilo & $F_{\max}$ [N] & \multicolumn{4}{c|}{coppia di compensazione di picco [mN$\cdot$m]} & Quota di $\tau_2$\\
+         & & J2 (polso) & J10 & J11 & J12 & sul vettore\\ \hline \hline
+        pp & 1,0 & 137 & 0,4 & 39 & 1,9 & 96\%\\
+        mf & 2,6 & 341 & 0,9 & 96 & 4,7 & 96\%\\
+        ff & 5,2 & 674 & 1,6 & 192 & 11,2 & 96\%\\
+        \hline
+    \end{tabular}
+    \caption{Coppie di compensazione ai giunti per il tocco del medio. La coppia gravitazionale massima sui giunti attivi è di circa 221~mN$\cdot$m. $J_1$ è sempre nulla perché la forza è verticale e l'asse di $J_1$ è verticale.}
+    \label{tab:statics}
+\end{table}
+
+I risultati mettono in evidenza due aspetti. Primo, il polso sopporta quasi tutto il carico di contatto: il pitch $J_2$ contribuisce per circa il $96\%$ del modulo del vettore delle coppie, come previsto dall'ellissoide di forza (Sezione~\ref{sec:manipulability_ellipsoids}), perché la forza verticale ha attraverso il polso una leva più grande che attraverso le falangi. Secondo, la coppia di compensazione sul pitch confrontata con quella gravitazionale ($0{,}22$~N$\cdot$m) vale circa 0,6, 1,5 e 3,1 volte per pp, mf e ff: nei tocchi forti il carico di contatto prevale sul peso della mano. Per ff la coppia sul giunto del dito J11 (192~mN$\cdot$m) supera il limite nominale di $100$~mN$\cdot$m, mentre quella sul pitch del polso (674~mN$\cdot$m) resta entro il limite di $1$~N$\cdot$m: è il giunto del dito, e non il polso, a dimensionare il tocco forte. Poiché i limiti di coppia sono ipotesi, la conclusione solida è qualitativa.
+
+\section{Validazione del controllo dinamico del tocco}
+\label{sec:val_controllo}
+
+\subsection{Simulazione a contatto con il modello a corpi rigidi}
+
+Il controllore ibrido del Capitolo~\ref{ch:controllo} è stato validato con una simulazione del dito medio contro il tasto E4 sul modello a corpi rigidi ridotto al polso e al dito (impianto a $2$~kHz, controllo a $1$~kHz), con contatto a molla di $300$~N/m, smorzatore di $5$~N$\cdot$s/m e fondo corsa a $8$~mm con rigidezza di $8000$~N/m, compensazione di gravità errata del $15\%$ e limiti di coppia degli attuatori. Si sono confrontati tre profili di tocco che differiscono per velocità di avvicinamento, forza desiderata e durata dell'attacco (Tabella~\ref{tab:touch}). Il dito parte dalla postura di fondo corsa del Task~2 con il polso già flesso, perché con il polso nella postura \textit{ready} il solo dito si arresta circa $6$~mm sopra la superficie del tasto.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.1}
+    \footnotesize
+    \begin{tabular}{|l|cccc|}
+        \hline
+        & pp & mf & ff ($\tau_{\max}$ nominale) & ff ($\tau_{\max}$ dito $0{,}25$~N$\cdot$m)\\ \hline \hline
+        Forza desiderata [N] & 1,0 & 2,5 & 5,0 & 5,0\\
+        Velocità d'impatto [m/s] & 0,052 & 0,125 & 0,219 & 0,219\\
+        Forza di picco [N] & 1,04 & 2,60 & 4,63 & 5,18\\
+        Sovraelongazione [\%] & 4,4 & 4,0 & 0,0 & 3,6\\
+        Errore della forza media in tenuta [\%] & 4,3 & 3,7 & 40,4 & 1,8\\
+        Errore RMS in tenuta [\%] & 4,3 & 3,7 & 40,4 & 1,8\\
+        Tempo di salita al 90\% [ms] & 193 & 147 & 66 & 64\\
+        Penetrazione massima [mm] & 3,5 & 8,0 & 8,3 & 8,3\\
+        Errore laterale massimo [mm] & 0,7 & 1,3 & 11,3 & 1,5\\
+        Passi con saturazione di coppia [\%] & 0,0 & 0,0 & 13,0 & 0,0\\
+        Coppia di picco del dito [mN$\cdot$m] & 42 & 91 & 100 & 187\\
+        Coppia di picco del polso [mN$\cdot$m] & 349 & 525 & 745 & 745\\ \hline
+    \end{tabular}
+    \caption{Prestazioni del controllo ibrido nei tre profili di tocco (modello a corpi rigidi, banda laterale $100$~rad/s). Nella colonna ff nominale il dito satura e il tocco non è valido.}
+    \label{tab:touch}
+\end{table}
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=\linewidth]{task5_rigid/task5_rigid_force_comparison.png}
+    \caption{Forza di contatto (sopra) e quota del polpastrello (sotto) per i profili pp, mf e ff: modello a corpi rigidi con controllo nello spazio operativo (a colori) a confronto con il modello con inerzia uniforme della versione iniziale dello studio (in grigio) e con la forza desiderata (tratteggio).}
+    \label{fig:touch}
+\end{figure}
+
+\paragraph{Risultati.} I tocchi pp e mf sono regolati con errore RMS in tenuta del 4,3\% e del 3,7\%, picchi di 1,04 e 2,60~N e polpastrello entro 1,3~mm dal centro del tasto; la velocità d'impatto segue quella di avvicinamento (0,052, 0,125, 0,219~m/s). Con il limite nominale di coppia del dito ($0{,}1$~N$\cdot$m) il tocco ff non è realizzabile: la forza massima staticamente sostenibile è 2,7~N (giunto limitante J11), il controllore satura nel 13,0\% dei passi, la forza a regime è 3,0~N invece di $5$~N (errore del 40,4\%) e a un giunto viene violato il limite di posizione di circa $69^\circ$. Con un limite di $0{,}25$~N$\cdot$m (capacità statica 6,6~N) il tocco ff è regolato con errore RMS in tenuta del 1,8\%, picco di 5,18~N e nessuna saturazione: ne segue che l'attuatore del dito deve poter erogare almeno circa 187~mN$\cdot$m, quasi il doppio del valore nominale ipotizzato. L'errore RMS calcolato sull'intera fase di contatto, che include il transitorio dopo l'impatto, è più alto ($13,8$--$15,4\%$ per pp e mf).
+
+\paragraph{Confronto con il modello semplificato.} Con il modello a inerzia uniforme di una prima versione i picchi erano 1,2, 6,3 e 13,9~N per pp, mf e ff (Figura~\ref{fig:touch}, in grigio), con forti rimbalzi sul fondo corsa; sul modello a corpi rigidi i picchi sono 1,04, 2,60 e 5,18~N. La differenza è dovuta all'inerzia efficace della punta, sovrastimata dal modello semplificato (decine di grammi nel modello a corpi rigidi contro circa $0{,}8$~kg), e conferma che le conclusioni sul tocco dipendono in modo critico dal modello dinamico.
+
+\paragraph{Frequenza di controllo e sensibilità.} Il controllo richiede un periodo non superiore a $1$~ms (Tabella~\ref{tab:ctrl_rate}). Una variazione dell'errore del modello di gravità da $0$ a $30\%$ sposta l'errore RMS in tenuta del tocco mf da 3,1\% a 4,1\%, ma con il $30\%$ un giunto supera il proprio limite di posizione di circa $3,3^\circ$: la postura del dito è vicina ai limiti articolari (margine di circa 5$^\circ$ nei tocchi nominali) e andrebbe riprogettata. Variando lo smorzamento in contatto $c_f$ tra $5$ e $30$~N$\cdot$s/m (ff, limite $0{,}25$~N$\cdot$m) il picco di forza è 6,0, 5,2 e 5,5~N; con $30$~N$\cdot$s/m il controllore satura per l'2,5\% dei passi.
+
+\paragraph{Limiti.} La simulazione usa un modello ridotto al polso e a un solo dito, inerzie, limiti di coppia e parametri di contatto ipotizzati e un contatto a molla-smorzatore; non sono stati valutati rumore di misura della forza, ritardi di attuazione e il confronto con un robot fisico o con il solutore di contatti di Gazebo.
+
+\subsection{Integrazione con Gazebo}
+\label{sec:val_gazebo}
+
+Il progetto include un pacchetto ROS~2 (Jazzy) per Gazebo (Harmonic), organizzato come segue.
+\begin{itemize}
+    \item \emph{Generatore}: produce a partire dalla stessa configurazione dei task l'URDF (con il carrello virtuale a tre giunti prismatici), il mondo con la tastiera (22 tasti bianchi e 15 neri, ciascuno con un giunto prismatico a molla e smorzatore), la geometria visiva della mano e le configurazioni dei controllori: controllore di traiettoria in posizione a $200$~Hz per i Task~1--4 e interfaccia in coppia a $1$~kHz per il Task~5.
+    \item \emph{Nodo dei Task~1--4}: invia al controllore di traiettoria le traiettorie delle Sezioni~\ref{sec:ik_tasks} (file \texttt{npz} con angoli di giunto e posizione del carrello).
+    \item \emph{Nodo del Task~5}: esegue lo stesso controllore del tocco della simulazione Python (stesso codice), a $1$~kHz con interfaccia in coppia; la forza di contatto è ricostruita dallo stato dei giunti dei tasti, che non è sufficiente a fondo corsa (la forza oltre il fondo corsa non è ricostruibile dal solo stato del giunto).
+    \item \emph{Modulo audio}: sintetizza il suono dei tasti dai loro spostamenti e dalle velocità.
+\end{itemize}
+
+\paragraph{Cosa è stato verificato.} Senza ROS~2/Gazebo sono stati verificati in Python: la coerenza geometrica e inerziale dell'URDF con il modello D-H (errori dell'ordine di $10^{-9}$, Tabella~\ref{tab:urdf_check}), il nodo del Task~5 in anello chiuso sull'impianto ridotto, il layout della tastiera e della scena e la geometria visiva della mano (test automatici).
+
+\paragraph{Cosa non è stato verificato.} Il pacchetto \textbf{non è mai stato eseguito in ROS~2/Gazebo}: non sono noti il caricamento di modello e mondo nel simulatore, il comportamento dei controllori di posizione e in coppia, la stabilità numerica con le inerzie molto piccole dei giunti distali, il comportamento del solutore di contatti sul fondo corsa (nel modello Python una molla da $8000$~N/m, in Gazebo un limite di giunto), il tempo di calcolo del nodo del Task~5 (che in Python richiede alcuni millisecondi per ciclo e impone una simulazione più lenta del tempo reale) e la coerenza tra le inerzie del modello Python e quelle effettive del simulatore.
+
+\paragraph{Protocollo di validazione previsto.} La Tabella~\ref{tab:gz_protocol} elenca le prove da eseguire e i criteri di accettazione proposti (da confermare); i risultati non sono ancora disponibili.
+
+\begin{table}[htbp]
+    \centering
+    \renewcommand{\arraystretch}{1.15}
+    \footnotesize
+    \begin{tabular}{|p{3.6cm}|p{5.2cm}|p{3.2cm}|c|}
+        \hline
+        Prova & Grandezza & Criterio proposto & Esito\\ \hline \hline
+        Caricamento & modello e mondo senza controllori: assenza di instabilità, tasti a riposo & nessuna deriva & \textit{da eseguire}\\
+        Cinematica & errore di posizione dei polpastrelli (TF) rispetto alla cinematica diretta Python & $<1$~mm & \textit{da eseguire}\\
+        Task~1 e Task~2 & saluto; tasto premuto e tasti adiacenti fermi & tasto $>$ soglia, vicini $<$ soglia & \textit{da eseguire}\\
+        Task~3 & triade: tre tasti premuti, indice e anulare liberi & tre tasti corretti & \textit{da eseguire}\\
+        Task~4 & salto d'ottava: errore di atterraggio e limiti del carrello & $<2$~mm; $v,a$ nei limiti & \textit{da eseguire}\\
+        Task~5 & forza in tenuta, errore laterale, picco (pp e mf, simulazione rallentata) & errore $<10\%$; laterale $<3$~mm & \textit{da eseguire}\\
+        Confronto Python-Gazebo & differenza di forza di picco e di regime tra i due simulatori & da definire dopo le prime prove & \textit{da eseguire}\\ \hline
+    \end{tabular}
+    \caption{Protocollo di validazione in Gazebo: i risultati non sono ancora disponibili.}
+    \label{tab:gz_protocol}
+\end{table}

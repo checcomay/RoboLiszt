@@ -18,7 +18,7 @@ dh:
   5:  {a: 0.035, alpha:   0.0, d: -0.006,  theta_offset:  -5.0}
   6:  {a: 0.025, alpha:   0.0, d:  0.000,  theta_offset: -12.0}
 
-  # --- Ring ---
+  # --- Annular ---
   7:  {a: 0.085, alpha: -90.0, d: -0.018,  theta_offset: -14.0}
   8:  {a: 0.045, alpha:   0.0, d: -0.004,  theta_offset: -11.0}
   9:  {a: 0.030, alpha:   0.0, d:  0.000,  theta_offset: -11.0}
@@ -28,7 +28,7 @@ dh:
   11: {a: 0.045, alpha:   0.0, d:  0.000,  theta_offset: -11.0}
   12: {a: 0.035, alpha:   0.0, d:  0.000,  theta_offset: -11.0}
 
-  # --- Index ---
+  # --- Thumb ---
   13: {a: 0.090, alpha: -90.0, d: -0.019,  theta_offset:  13.0}
   14: {a: 0.045, alpha:   0.0, d:  0.004,  theta_offset: -11.0}
   15: {a: 0.030, alpha:   0.0, d:  0.000,  theta_offset: -11.0}
@@ -167,7 +167,7 @@ actuators:                   # ipotesi di progetto per normalizzare l'ellissoide
 touch_rigid:
   dt_ctrl: 0.001             # s   passo del controllore (ZOH delle coppie)
   dt_plant: 0.0005           # s   passo di integrazione dell'impianto
-  wn_xy: 40.0                # rad/s
+  wn_xy: 100.0               # rad/s
   zeta_xy: 1.0
   wn_z: 40.0                 # rad/s
   zeta_z: 1.0

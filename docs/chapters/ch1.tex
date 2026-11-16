@@ -1,0 +1,163 @@
+
+\chapter{Introduzione e scopo del progetto}
+
+La manipolazione fine, nota in letteratura come \textit{dexterous manipulation}, rappresenta una delle sfide più affascinanti e complesse nell'ambito della robotica moderna. 
+Replicare la destrezza e la fluidità della mano umana richiede non solo una progettazione meccanica avanzata, ma anche algoritmi di cinematica, dinamica e controllo altamente sofisticati. 
+
+Il presente progetto, denominato \textbf{RoboLiszt}, si pone l'obiettivo di progettare, modellare e simulare una mano robotica antropomorfa specificamente sviluppata per un compito di altissima precisione: l'esecuzione musicale al pianoforte.
+La denominazione del progetto è stata coniata per simboleggiare la perfetta sinergia del trascendentale virtuosismo pianistico del celebre compositore ungherese Franz Liszt (1811-1886) con l'assoluta precisione deterministica propria dei moderni manipolatori robotici. 
+
+\section{Stato dell'arte}
+
+Lo sviluppo di RoboLiszt si inserisce in un filone di ricerca consolidato.
+L'automazione applicata all'arte rappresenta da secoli uno dei banchi di prova più affascinanti per l'ingegneria.
+L’interazione tra macchine e strumenti musicali non nasce con la moderna meccatronica: affonda le sue radici nell’illuminismo europeo, periodo in cui l’ambizione di replicare l’espressività umana portò alla nascita dei primi capolavori dell'orologeria.
+
+Tra gli esempi storici più illustri spicca la \textit{Giocatrice di Timpano} (La Joueuse de Tympanon) di Pierre Kintzing e David Roentgen (1784), nonché i celebri automi di Pierre Jaquet-Droz, in particolare \textit{La Musicienne}, capace di suonare realmente un organo a canne premendo i tasti tramite un complesso sistema di camme meccaniche interne. 
+In epoca contemporanea, progetti pionieristici come il robot pianista \textit{WABOT-2} (sviluppato dalla Waseda University negli anni '80) hanno segnato il passaggio definitivo dall'automa a movimento fisso al manipolatore governato da cinematiche digitali adattive.
+
+\subsection{RoboPianist e il Reinforcement Learning}
+
+Sviluppato da ricercatori di Google DeepMind, UC Berkeley e Stanford, \textit{RoboPianist}~\cite{robopianist2023} rappresenta l'attuale benchmark di riferimento per il controllo robotico ad alta dimensionalità. 
+Il progetto utilizza il motore fisico MuJoCo per simulare due mani robotiche sospese sopra un pianoforte a 88 tasti. 
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.65\linewidth]{public/robopianist.png}
+    \caption[In figura l'ambiente di simulazione per l'esecuzione pianistica di RoboPianist utilizzando il motore fisico open-source MuJoCo.]{In figura l'ambiente di simulazione per l'esecuzione pianistica di RoboPianist utilizzando il motore fisico open-source MuJoCo. 
+    Esso è costituito da una tastiera digitale a grandezza naturale da 88 tasti e da due mani robotiche Shadow Dexterous Hands, ciascuna dotata di 24 gradi di libertà.
+    Fonte:~\cite{robopianist2023}.}
+    \label{fig:robopianist}
+\end{figure}
+
+A differenza di RoboLiszt, che impiega un approccio analitico basato sulla cinematica inversa e il controllo dinamico, RoboPianist sfrutta il \textit{Deep Reinforcement Learning} per insegnare a un agente autonomo l'esecuzione di partiture complesse in formato MIDI, nello specifico l'algoritmo DroQ.
+
+Dal punto di vista  meccanico, il principale riferimento accademico è la \textit{Shadow Dexterous Hand} (modello E3M5). 
+Si tratta di una delle mani robotiche più all'avanguardia attualmente in commercio: caratterizzata da dimensioni umane, replica la complessa biomeccanica dei tendini grazie a un sofisticato sistema a 24 gradi di libertà per ogni singola mano.
+Pur essendo un hardware fisico, i suoi modelli cinematici open-source costituiscono lo standard per la simulazione e forniscono i parametri anatomici realistici (quali lunghezze delle falangi, offset palmari e limiti articolari) su cui si basa l'albero cinematico sviluppato in questo progetto.
+
+Il brano musicale viene codificato partendo dallo standard MIDI e convertito in una traiettoria temporale (\textit{piano roll}), che funge da stato obiettivo per l'agente. 
+Ad ogni istante di tempo, la rete neurale riceve in ingresso lo stato propriocettivo della mano e lo stato dei tasti, restituendo come output gli angoli di giunto target per gli attuatori proporzionali.
+
+Una delle principali sfide evidenziate dallo studio è la difficoltà di esplorazione dello spazio delle azioni a causa dell'altissima dimensionalità del sistema. 
+Per ovviare a questo problema ed evitare segnali di \textit{reward} troppo sparsi, i ricercatori hanno integrato euristiche umane all'interno della funzione di ricompensa, utilizzando un dataset di diteggiature pianistiche (\textit{Repertoire-150}) per guidare l'apprendimento dell'agente. 
+Infine, l'accuratezza dell'esecuzione viene misurata tramite metriche statistiche standard, quali \textit{Precision}, \textit{Recall} e \textit{F1 score}, per valutare l'esatta sincronizzazione e pressione dei tasti richiesti dalla partitura originale.
+
+\subsection{Apprendimento autonomo: il caso della USC Viterbi}
+
+Un ulteriore paradigma innovativo nel campo della \textit{dexterous manipulation} musicale è stato recentemente illustrato dai ricercatori della Viterbi School of Engineering presso la University of Southern California (USC)~\cite{usc_pianohand_2026}. 
+Lo studio presenta una mano robotica in grado di apprendere autonomamente l'esecuzione di brani al pianoforte senza fare affidamento su rigide traiettorie pre-programmate. 
+
+A differenza dei robot convenzionali basati sull'inversione dello Jacobiano e su modelli dinamici espliciti (come l'architettura proposta in \textit{RoboLiszt}), l'approccio della USC si fonda su algoritmi di apprendimento automatico. 
+Il sistema è progettato per auto-istruirsi (\textit{self-taught}) interagendo direttamente con lo strumento: valutando i propri errori acustici e di posizionamento, la mano affina iterativamente la coordinazione e la fluidità dei movimenti. 
+
+La mano utilizza quattro dita azionate da tendini e controllate da piccoli motori elettrici, progettati per imitare la meccanica della mano umana. 
+Inoltre, un sistema di reti neurali analizzano il suono della melodia e lo convertono nei comandi motori necessari per riprodurla.
+
+Il robot pianista rappresenta una dimostrazione di fattibilità per quella che i ricercatori chiamano “robotica percettiva”: un modello in cui il sistema percepisce l'ambiente circostante, sperimenta movimenti e si autocorregge senza ricorrere a dati di addestramento esaustivi. 
+Secondo gli studiosi, questo stesso approccio potrebbe in futuro offrire assistenza alle persone in modi molto più personali e intuitivi rispetto a quanto facciano gli attuali robot progettati per compiti specifici.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.5\linewidth]{public/robohand.png}
+    \caption[Melodia tratta da \textit{Perception in action}: un sistema robotico in grado di imparare autonomamente a suonare delle melodie musicali.]{Melodia tratta da \textit{Perception in action}: un sistema robotico in grado di imparare autonomamente a suonare delle melodie musicali.
+    Fonte:~\cite{usc_pianohand_2026}.}
+    \label{fig:robohand}
+\end{figure}
+
+\subsection{Apprendimento data-driven per task atletici dinamici}
+
+A dimostrazione di come le moderne architetture di controllo si stiano espandendo verso ogni dominio fisico, un recente e rilevante contributo è presentato in uno studio pubblicato su arXiv~\cite{athletic_tasks_2025}. 
+Il progetto esplora lo sviluppo di sistemi robotici in grado di eseguire task atletici altamente dinamici, ciascuno caratterizzato da sfide fisiche e requisiti di agilità unici. 
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\linewidth]{public/rp1m}
+    \caption[Agente basato sull'apprendimento per rinforzo (RL) che elimina la necessità di diteggiature annotate da esseri umani, formulando il posizionamento delle dita come un problema di Trasporto Ottimale (OT).]{L'articolo~\cite{athletic_tasks_2025} propone un agente basato sull'apprendimento per rinforzo (RL) che elimina la necessità di diteggiature annotate da esseri umani, formulando il posizionamento delle dita come un problema di Trasporto Ottimale (OT); ciò consente all'agente di eseguire brani musicali senza alcun aiuto umano, incluso il complesso brano “Il volo del calabrone”. 
+    Viene inoltre realizzato un dataset su larga scala, denominato RP1M++, costituito da oltre un milione di traiettorie di esecuzione pianistica esperta, ottenute addestrando più di 2$\,$000 agenti RL.}
+    \label{fig:rp1m}
+\end{figure}
+
+Dal punto di vista dell'infrastruttura software, framework di questa portata fanno tipicamente affidamento su un'architettura ibrida, utilizzando \textbf{Python} per l'elaborazione dei dati e il \textit{training} dei modelli di apprendimento (sfruttando librerie come PyTorch o JAX), accoppiato al \textbf{C++} per garantire le frequenze di calcolo necessarie al deployment del controllo in \textit{real-time} sull'hardware.
+
+L'aspetto più ragguardevole di questo progetto risiede nella capacità dell'algoritmo di “consumare” e generalizzare enormi moli di dati per gestire vincoli dinamici severi. 
+Questo approccio offre un interessante spunto di riflessione se confrontato con \textit{RoboLiszt}: mentre la mano pianista opera nel dominio della manipolazione fine (richiedendo estrema precisione e destrezza su microscala), il robot atletico affronta il problema duale, dovendo governare forze impulsive, inerzie elevate e stabilità globale su macroscala. 
+Entrambi i domini, tuttavia, evidenziano la necessità di modelli dinamici accurati e algoritmi di controllo robusti.
+
+\subsection{Un approccio bio-ispirato}
+
+Un approccio profondamente diverso dalla modellazione a giunti rigidi è rappresentato dal sistema robotico descritto in un recente studio pubblicato sul \textit{Journal of the Royal Society Interface}~\cite{perception_action_2025}. 
+La ricerca illustra il controllo dinamico di una mano robotica, definita \textit{Musician Hand}, dotata di quattro dita attuate a tendine e guidate da altrettanti motori in corrente continua (DC).
+
+Come dettagliato nella Sezione~2.2 dello studio, la meccanica fisica del manipolatore emula l'anatomia umana. 
+Ogni dito è modellato rigorosamente come un sistema dinamico del secondo ordine, la cui equazione del moto integra l'inerzia articolare ($I$), le forze centrifughe e di Coriolis ($c$), il coefficiente di attrito al giunto ($b$) e la rigidezza strutturale.
+In formule:
+\begin{equation}
+    \ddot{q}_i =
+    -I(q_i)^{-1} c(q_i, \dot{q}_i) + b \dot{q}_i + I(q_i)^{-1} T
+    \label{eq:musician_hand_meccanics}
+\end{equation}
+La coppia motrice non è applicata direttamente sull'asse di rotazione, ma è generata dalle forze “muscolo-tendinee” (i cavi trazionati dai motori) moltiplicate per il rispettivo braccio di momento meccanico. 
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.95\linewidth]{public/musician_hand}
+    \caption[Profili di attivazione motoria della \textit{Musician Hand} e sequenze di attivazione motoria.]{(a) Profili di attivazione motoria della \textit{Musician Hand}: per la riproduzione delle melodie sono stati definiti quattro profili di attivazione pre-programmati. 
+    La funzione di controllo impiega un'approssimazione esponenziale della dinamica di attivazione-contrazione muscolare [50--52]. 
+    Per emulare il fisiologico tono muscolare e garantire la prontezza operativa, ciascun profilo è inizializzato al 5\% dell'attivazione massima, raggiungendo successivamente quattro distinti livelli di plateau dell'intensità ($K_{1-4}$) regolati da specifiche costanti di tempo ($\tau_{1-4}$). 
+    Tale approccio genera quattro differenti meccaniche di interazione con la tastiera e da vita a variazioni precise nell'attacco, nel volume e nel decadimento acustico della nota. 
+    (b) Sequenze di attivazione motoria: esempio dei segnali di controllo inviati agli attuatori per la trazione dei tendini e la conseguente pressione dei tasti.
+    Fonte:~\cite{perception_action_2025}.}
+    \label{fig:musician_hand}
+\end{figure}
+
+L'aspetto più innovativo del progetto risiede nel paradigma di attuazione: il sistema mappa direttamente lo spettrogramma dell'audio musicale in serie temporali di attuazione tramite una Rete Neurale Artificiale (costituita da CNN e MLP). 
+I motori vengono azionati seguendo un'approssimazione esponenziale della dinamica di attivazione-contrazione muscolare umana, impiegando quattro differenti plateau di intensità e costanti di tempo per replicare realisticamente l'attacco, il volume e il decadimento acustico della nota.
+
+\subsection{Pianobot: la pianificazione della traiettoria}
+
+Un ulteriore e pragmatico contributo allo stato dell'arte è offerto dai framework \textit{open-source} orientati all'integrazione di sistema, tra cui spicca il progetto \textit{Pianobot}~\cite{pianobot_lin}. 
+A differenza delle complesse architetture bio-ispirate o basate su reti neurali, questo repository mette in luce l'implementazione algoritmica pura, poiché fornisce una pipeline software strutturata per la traduzione diretta di file MIDI in traiettorie cinematiche eseguibili.
+
+Sebbene non si concentri sull'ottimizzazione anatomica e sulla riduzione mirata dei gradi di libertà che caratterizza \textit{RoboLiszt}, \textit{Pianobot} rappresenta un eccellente riferimento architetturale per la pianificazione computazionale del moto (\textit{trajectory planning}) e per la rigorosa temporizzazione (\textit{timing}) delle sequenze musicali.
+Tra le funzionalità implementate vi troviamo l'utilizzo di algoritmi di Computer Vision fondamentali per l'individuazione del pianoforte, come ad esempio l'algoritmo SIFT (\textit{Scale-Invariant Feature Transform}), indispensabile per la localizzazione dello strumento.
+
+Un aspetto particolarmente affine alle problematiche affrontate in \textit{RoboLiszt} è la successiva manipolazione algoritmica delle note: attraverso specifiche tecniche di segmentazione e \textit{clustering}, il framework è in grado di calcolare il percorso spaziale più breve per lo scorrimento del braccio robotico e di determinare la sequenza ottima per il movimento delle singole dita.
+
+\section{Motivazione della scelta}
+
+Il presente progetto nasce dalla volontà di coniugare due discipline all'apparenza distanti, ma intrinsecamente legate da profonde affinità: l'informatica, declinata nei campi della robotica e del controllo dei sistemi, e la musica. 
+Sebbene operino in domini differenti, entrambe le materie condividono un fondamento basato sul rigore matematico, sulla logica strutturale, sulla ritmica e sulla precisione algoritmica.
+
+La realizzazione di un sistema cibernetico in grado di interfacciarsi fisicamente con uno strumento musicale rappresenta la sintesi perfetta di tali elementi. 
+In questa prospettiva, la partitura musicale smette di essere un semplice costrutto artistico e diventa una rigorosa pianificazione di traiettorie nel tempo e nello spazio operativo, governata da precise leggi di cinematica e dinamica.
+
+\begin{figure}[!ht]
+    \centering
+    \includegraphics[width=0.75\linewidth]{public/robotic_hand_plays_piano.jpeg}
+    \caption{Rappresentazione della mano robotica al pianoforte.}
+\end{figure}
+
+\subsection{L'esecuzione pianistica come benchmark per la robotica}
+
+Il pianoforte è uno dei compiti più esigenti per una mano, umana o artificiale. 
+L'esecuzione richiede un posizionamento spaziale preciso (i tasti bianchi hanno una larghezza di circa 23.5~mm), una coordinazione simultanea di più dita (accordi), movimenti rapidi del polso e dell'avambraccio per coprire l'estensione della tastiera, e un controllo del \emph{tocco}, cioè della forza e della velocità con cui il tasto viene colpito, da cui dipende l'intensità del suono. 
+Il pianoforte è un banco di prova naturale per lo studio della cinematica, della dinamica e del controllo di mani robotiche antropomorfe, specialmente per diverse ragioni:
+\begin{itemize}
+    \item \textbf{Spazio di lavoro vincolato e discreto:} I tasti di un pianoforte sono geometricamente noti, complanari e disposti a passo costante. Ciò consente di formulare target cartesiani deterministici ($x_k$, $y_k$, $z_k$), ideali per la verifica analitica della cinematica inversa.
+    \item \textbf{Manipolazione a contatto intermittente:} a differenza dei robot di saldatura o verniciatura a traiettoria continua, il tocco del tasto alterna fasi di moto libero (spostamento e posizionamento) a fasi di contatto verticale rapido con precisione millimetrica.
+    \item \textbf{Cinematica ramificata a catene aperte:} permette di studiare l'estensione delle catene seriali verso strutture ad albero, senza incorrere nelle complicazioni dinamiche e vincolari delle catene chiuse.
+\end{itemize}
+L'insieme di queste specifiche sfide cinematiche costituirà il fulcro dell'analisi condotta nei capitoli successivi del presente lavoro, al fine di validare rigorosamente le scelte architetturali e di controllo adottate nel sistema.
+
+\subsection{Obiettivi del progetto}
+
+Il presente lavoro si propone di:
+\begin{itemize}
+    \item definire un modello cinematico a catena aperta ramificata della mano (polso a 2 DoF, quattro dita e pollice, per un totale di 20 giunti rotoidali) e analizzarne spazio di lavoro, singolarità e ridondanza;
+    \item sviluppare un algoritmo di cinematica inversa robusto alle singolarità e ai limiti articolari, capace di coordinare più dita attorno a un polso condiviso;
+    \item caratterizzare la capacità della struttura di trasmettere velocità e forze al polpastrello tramite le ellissoidi di manipolabilità, in forma cinematica e dinamica;
+    \item formulare la dinamica della struttura ramificata con la formulazione ricorsiva di Newton--Eulero e utilizzarla per calcolare le coppie necessarie lungo i task;
+    \item progettare un controllo ibrido posizione/forza per l'interazione con la tastiera;
+    \item realizzare un'architettura software che colleghi modello, pianificazione e simulazione, fino alla simulazione fisica in ambiente Gazebo.
+\end{itemize}

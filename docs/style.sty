@@ -1,0 +1,283 @@
+% =============================================================
+% style.sty
+% =============================================================
+\NeedsTeXFormat{LaTeX2e}
+\ProvidesPackage{style}[2026/09/03 v1.0 Custom style]
+
+% -------------------------
+% Encoding & language
+% -------------------------
+\RequirePackage[utf8]{inputenc}
+\RequirePackage[T1]{fontenc}
+\RequirePackage[italian]{babel}
+
+% -------------------------
+% Useful basic packages
+% -------------------------
+\RequirePackage{graphicx}
+\RequirePackage{geometry}
+\RequirePackage{fancyhdr}
+\RequirePackage{enumitem}
+
+% Tables
+\RequirePackage[table]{xcolor}
+\RequirePackage{longtable}
+\RequirePackage{multicol}
+\RequirePackage{multirow}
+
+% Mathematics
+\RequirePackage{amsmath}
+\RequirePackage{amssymb}
+\RequirePackage{cancel}
+\RequirePackage{esint}
+
+% Code and algorithms
+\RequirePackage{listings}
+\RequirePackage{etoolbox}
+
+% Figures using TikZ
+\RequirePackage{tikz}  
+\usetikzlibrary{arrows.meta,positioning,calc}
+
+% Algorithm2e with options
+\RequirePackage[
+  linesnumbered,
+  ruled,
+  vlined
+]{algorithm2e}
+
+\SetKwComment{tcp}{\gray{$\triangleright$}\ }{}
+
+% =============================================================
+% ===                        LAYOUT                         ===
+% =============================================================
+
+% --- Page Margins ---
+\geometry{
+    left=2.5cm,
+    right=2.5cm,
+    top=2.5cm,
+    bottom=2.5cm
+}
+
+% --- Header & Footer ---
+\pagestyle{fancy}
+\setlength{\headheight}{25.22153pt}
+\addtolength{\topmargin}{-9.22153pt}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\lhead{}
+\chead{}
+\rhead{\small\leftmark}
+
+% --- Images Path ---
+\graphicspath{ {./images/} }
+
+% --- (TOC) ---
+\setcounter{tocdepth}{3}
+
+% --- Lists ---
+\setlist[itemize]{
+    itemsep=0.25em,
+    topsep=0.3em,
+    parsep=0.0em,
+    partopsep=0.0em,
+    label=$\circ$
+}
+
+\setlist[enumerate]{
+    itemsep=0.25em,
+    topsep=0.3em,
+    parsep=0.0em,
+    partopsep=0.0em,
+}
+
+% =============================================================
+% ===                    HYPERREF SETUP                     ===
+% =============================================================
+\RequirePackage[
+    colorlinks=true,
+    citecolor=blue,
+    pagebackref=true,
+]{hyperref}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=blue,
+    urlcolor=blue
+}
+
+% --- Bibliography Style ---
+\RequirePackage{csquotes}
+
+% --- Customization of backref text for Bibliography ---
+\renewcommand*{\backref}[1]{}
+\renewcommand*{\backrefalt}[4]{%
+    \ifcase #1 %
+    \or Cited on page~#2.%
+    \else Cited on pages~#2.%
+\fi}
+
+% =============================================================
+% ===                 UTILITY COMMANDS                      ===
+% =============================================================
+
+% --- To remember important things ---
+\newcommand{\important}[1]{\begin{center}\large{\red{\textbf{!!! #1 !!!}}}\end{center}}
+
+% --- Comments for Algorithm2e ---
+\SetCommentSty{myCommentFont}
+\newcommand\myCommentFont[1]{\footnotesize\textit{\gray{#1}}}
+\SetKwComment{tcp}{\gray{$\triangleright$}\ }{}
+\DontPrintSemicolon % remove semicolons (';') from all algorithms
+
+% --- Change the name of caption in lstlistings ---
+\renewcommand{\lstlistingname}{Codice}
+
+% --- Maths & Symbols ---
+\newcommand{\rcancel}[1]{%
+    \renewcommand{\CancelColor}{\color{red}}%
+    \cancel{#1}%
+}
+\newcommand{\dd}[1]{\frac{\mathrm{d}}{\mathrm{d}#1}} 
+\newcommand{\prob}[1]{\mathbb{P}\!\left(#1\right)}  
+\newcommand{\expec}[1]{\mathbb{E}\!\left[#1\right]}      
+\newcommand{\variance}[1]{\mathrm{Var}\!\left(#1\right)}  
+\newcommand{\cov}[1]{\mathrm{Cov}\!\left(#1\right)}       
+\newcommand{\expE}[1]{\mathrm{e}^{#1}}    
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+
+% --- Text Colors ---
+\newcommand{\green}[1]{\textcolor{green!50!black}{#1}}
+\newcommand{\magenta}[1]{\textcolor{magenta}{#1}}    
+\newcommand{\orange}[1]{\textcolor{orange}{#1}}                
+\newcommand{\olive}[1]{\textcolor{olive}{#1}}              
+\newcommand{\blue}[1]{\textcolor{blue}{#1}}                
+\newcommand{\cyan}[1]{\textcolor{cyan}{#1}}                
+\newcommand{\teal}[1]{\textcolor{teal}{#1}}  
+\newcommand{\gray}[1]{\textcolor{gray}{#1}}  
+\newcommand{\red}[1]{\textcolor{red}{#1}}
+
+% =============================================================
+% ===              CODE CONFIGURATION (LISTINGS)            ===
+% =============================================================
+
+% --- Palette Standard (Light Mode) ---
+\definecolor{cmdnumber}{RGB}{210, 105, 30}
+\definecolor{terminalbg}{RGB}{245,245,245}
+\definecolor{cmdprimary}{RGB}{128, 0, 128}
+\definecolor{cmdbuiltin}{RGB}{85, 107, 47}
+\definecolor{cmdfunction}{RGB}{110, 165, 240}
+\definecolor{cmdidentifier}{RGB}{0, 0, 139}
+\definecolor{cmdstring}{RGB}{0, 100, 0}
+\definecolor{cmdexception}{RGB}{178, 34, 34}
+\definecolor{cmdmagic}{RGB}{0, 139, 139}
+\definecolor{cmdconstant}{RGB}{0, 140, 140}
+\definecolor{cmdcomment}{RGB}{150, 150, 150}
+\definecolor{rulecolor}{RGB}{220, 220, 220}
+
+% --- Palette Darcula (JetBrains Dark Mode) ---
+%\definecolor{cmdnumber}{RGB}{104, 151, 187}
+%\definecolor{terminalbg}{RGB}{43, 43, 43}
+%\definecolor{cmdprimary}{RGB}{204, 120, 50}
+%\definecolor{cmdbuiltin}{RGB}{152, 118, 170}
+%\definecolor{cmdfunction}{RGB}{255, 198, 109}
+%\definecolor{cmdexception}{RGB}{218, 73, 56}
+%\definecolor{cmdmagic}{RGB}{160, 70, 175}
+%\definecolor{cmdconstant}{RGB}{152, 118, 170}
+%\definecolor{cmdidentifier}{RGB}{169, 183, 198}
+%\definecolor{cmdcomment}{RGB}{128, 128, 128}
+%\definecolor{cmdstring}{RGB}{106, 135, 89}
+%\definecolor{rulecolor}{RGB}{60, 63, 65}
+
+% ================================================
+% ===        DEFINE NEW STYLE FOR PYTHON       ===
+% ================================================
+\lstdefinestyle{PythonStyle}{
+    language=python,
+    backgroundcolor=\color{terminalbg},
+    basicstyle=\ttfamily\footnotesize,
+    identifierstyle=\color{cmdidentifier},
+    alsoletter={0123456789},
+    commentstyle=\color{cmdcomment}\itshape,
+    stringstyle=\color{cmdstring},
+    % --- GROUP 0: Primary Keyword Standard ---
+    classoffset=0,
+    keywordstyle=\color{cmdprimary}\bfseries,
+    morekeywords={import, from, as, def, return, class, if, else, elif, while, for, in, try, except, finally, with, raise, lambda, pass, break, continue, global, assert, del, yield, await, async, and, or, not, is, None},   
+    % --- GROUP 1: Secondary Keyword (built-ins)
+    classoffset=1,
+    keywordstyle=\color{cmdbuiltin}\bfseries,
+    morekeywords={self, True, False,  print, len, range, enumerate, zip, list, dict, set, tuple, int, float, str, bool, super, isinstance, open, exp, sum, dot, sqrt, min, max, abs},
+    % --- GROUP 2: Numbers ---
+    classoffset=2,
+    morekeywords={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,40,50,60,64,100,110,128,130,255,256,512,1024,2048,4096,8192,1e},
+    keywordstyle=\color{cmdnumber}\bfseries,
+    % --- GROUP 3: Functions ---
+    classoffset=3,
+    keywordstyle=\color{cmdfunction}\bfseries,
+    morekeywords={push, reverse, printList},
+    % --- GROUP 4: Exceptions ---
+    classoffset=4,
+    keywordstyle=\color{cmdexception}\bfseries,
+    morekeywords={Exception, ValueError, TypeError, IndexError, KeyError, ImportError, AttributeError, NameError, RuntimeError, StopIteration, ZeroDivisionError, FileNotFoundError, IOError},
+    % --- GROUP 5: Highlights constructor & operator overloading methods ---
+    classoffset=5,
+    keywordstyle=\color{cmdmagic}\itshape,
+    morekeywords={__init__, __str__, __repr__, __call__, __len__, __class__, __getitem__, __setitem__, __delitem__, __iter__, __next__, __enter__, __exit__, __name__, __main__},
+    % --- GROUP 6: Constants---
+    classoffset=6,
+    keywordstyle=\color{cmdconstant}\bfseries,
+    morekeywords={PI, EPSILON, MAX_ITER, BATCH_SIZE, LEARNING_RATE, WIDTH, HEIGHT, DEBUG, COLOR_BGR2HSV, 0x00, 0xFF},
+    % --- Reset to group 0 ---
+    classoffset=0,
+    % --- FRAME & SYMBOLS ---
+}
+
+% ================================================
+% ===         DEFINE NEW STYLE FOR BASH        ===
+% ================================================
+\lstdefinestyle{BashStyle}{
+    language=bash,
+    backgroundcolor=\color{terminalbg},
+    basicstyle=\ttfamily\footnotesize,
+    identifierstyle=\color{cmdidentifier},
+    commentstyle=\color{commentstyle}\itshape,
+    stringstyle=\color{cmdstring},
+    alsoletter={0123456789},
+    % --- CLASSE 0: KEYWORDS ---
+    classoffset=0,
+    keywordstyle=\color{cmdprimary}\bfseries,
+    morekeywords={echo, cd, ls, pwd, mkdir, rm, mv, cp, sudo, apt, mpirun, mpicc, export, if, then, else, fi, for, do, done, in},
+    % --- CLASSE 1: NUMBERS ---
+    classoffset=1,
+    morekeywords={0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,32,64,128,256,512,1024,2048},
+    keywordstyle=\color{cmdnumber},
+    classoffset=0,
+    %
+    % --- FRAME & SYMBOLS ---
+    literate=
+        {=}{{=}}1 
+        {(}{{(}}1 
+        {)}{{)}}1 
+        {[}{{[}}1 
+        {]}{{]}}1 
+        {;}{{;}}1 
+        {,}{{,}}1
+        {$}{{\$}}1,
+}
+
+% --- Listings General Settings ---
+\lstset{
+    style=PythonStyle,
+    frame=single,
+    framerule=0.5pt,
+    rulecolor=\color{rulecolor},
+    showstringspaces=false,
+    breaklines=true,
+    breakatwhitespace=false,
+    columns=flexible,
+    showtabs=false,                  
+    tabsize=2,
+}
