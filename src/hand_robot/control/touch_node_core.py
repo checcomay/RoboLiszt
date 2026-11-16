@@ -29,8 +29,9 @@ PRE, RUN = "pre", "run"
 
 
 def key_joint_name(kb, note: str) -> str:
-    """Name of the prismatic key joint in worlds/piano.sdf (key_00 = C3 ... key_21 = C6, C4 = key_07)."""
-    return f"key_{kb.white_index(note) - kb.white_index('C4') + 7:02d}_joint"
+    """Name of the prismatic key joint in worlds/piano.sdf: by MIDI number, C4 = key_60_joint (see piano/layout.py)."""
+    from hand_robot.piano.layout import key_joint_name as _name
+    return _name(note)
 
 
 class TouchNodeCore:

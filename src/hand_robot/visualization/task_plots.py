@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
@@ -7,7 +8,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 PHASE_COLORS = {"lift": "#fde9c9", "descend": "#cfe5f7", "hold": "#d6f0d2", "release": "#cfe5f7", "return": "#fde9c9",
                 "raise": "#fde9c9", "wave": "#d6f0d2", "lower": "#fde9c9", "jump": "#e8d6f0", "approach": "#cfe5f7",
                 "force": "#d6f0d2", "retract": "#fde9c9"}
-NAMES = {"finger_1": "little", "finger_2": "ring", "finger_3": "middle", "finger_4": "index", "finger_5": "thumb"}
+NAMES = {"finger_1": "mignolo", "finger_2": "anulare", "finger_3": "medio", "finger_4": "indice", "finger_5": "pollice"}
 
 
 def _shade(ax, res):
@@ -29,8 +30,8 @@ def plot_tips_height(scene, res, manager, name=None):
         ax.plot(res.t, 1e3 * tips[:, i, 2], label=NAMES[n])
     ax.axhline(0, color="k", lw=1)
     ax.axhline(-1e3 * scene.kb.press_depth, color="k", lw=0.8, ls="--")
-    ax.set_xlabel("time [s]")
-    ax.set_ylabel("fingertip height above key surface [mm]")
+    ax.set_xlabel("tempo [s]")
+    ax.set_ylabel("quota del polpastrello sopra la superficie dei tasti [mm]")
     ax.set_title(res.name)
     ax.legend(ncol=5, fontsize=8, loc="upper right")
     fig.tight_layout()
@@ -68,17 +69,17 @@ def plot_wave(scene, res, manager):
     ax = fig.add_subplot(1, 3, 1, projection="3d")
     for i, n in enumerate(scene.robot.branches):
         ax.plot(tips[:, i, 0], tips[:, i, 1], tips[:, i, 2], label=NAMES[n], lw=1)
-    ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_zlabel("z"); ax.set_title("fingertip paths [m]")
+    ax.set_xlabel("x"); ax.set_ylabel("y"); ax.set_zlabel("z"); ax.set_title("traiettorie dei polpastrelli [m]")
     ax.legend(fontsize=6)
     ax2 = fig.add_subplot(1, 3, 2)
     _shade(ax2, res)
-    ax2.plot(res.t, np.rad2deg(res.q[:, 0]), label="q1 (deviation)")
-    ax2.plot(res.t, np.rad2deg(res.q[:, 1]), label="q2 (pitch)")
-    ax2.set_xlabel("time [s]"); ax2.set_ylabel("deg"); ax2.legend(fontsize=8); ax2.set_title("wrist")
+    ax2.plot(res.t, np.rad2deg(res.q[:, 0]), label="q1 (deviazione)")
+    ax2.plot(res.t, np.rad2deg(res.q[:, 1]), label="q2 (flessione)")
+    ax2.set_xlabel("tempo [s]"); ax2.set_ylabel("gradi"); ax2.legend(fontsize=8); ax2.set_title("polso")
     ax3 = fig.add_subplot(1, 3, 3)
     sm = res.extras["sigma_min_middle"]
-    ax3.plot(res.t[::5][:len(sm)], sm); ax3.set_xlabel("time [s]"); ax3.set_ylabel(r"$\sigma_{min}(J)$ middle")
-    ax3.set_title("singularity index")
+    ax3.plot(res.t[::5][:len(sm)], sm); ax3.set_xlabel("tempo [s]"); ax3.set_ylabel(r"$\sigma_{min}(J)$ medio")
+    ax3.set_title("indice di singolarità")
     fig.tight_layout()
     return manager.save(fig, "task1_wave", "tasks")
 
@@ -88,18 +89,18 @@ def plot_octave(scene, res, manager):
     ex = res.extras
     fig, axs = plt.subplots(1, 3, figsize=(13, 4))
     ax = axs[0]; _shade(ax, res)
-    ax.plot(res.t, 1e3 * res.base[:, 1], label="carriage y")
-    ax.plot(res.t, 1e3 * res.base[:, 2], label="carriage z")
-    ax.set_xlabel("time [s]"); ax.set_ylabel("mm"); ax.legend(fontsize=8); ax.set_title("carriage motion")
+    ax.plot(res.t, 1e3 * res.base[:, 1], label="carrello y")
+    ax.plot(res.t, 1e3 * res.base[:, 2], label="carrello z")
+    ax.set_xlabel("tempo [s]"); ax.set_ylabel("mm"); ax.legend(fontsize=8); ax.set_title("moto del carrello")
     ax = axs[1]; _shade(ax, res)
     for i, n in enumerate(scene.robot.branches):
         ax.plot(res.t, 1e3 * tips[:, i, 1], label=NAMES[n])
-    ax.set_xlabel("time [s]"); ax.set_ylabel("fingertip y [mm]"); ax.legend(fontsize=7, ncol=2); ax.set_title("lateral position")
+    ax.set_xlabel("tempo [s]"); ax.set_ylabel("y del polpastrello [mm]"); ax.legend(fontsize=7, ncol=2); ax.set_title("posizione laterale")
     ax = axs[2]
     ax.bar(ex["reach_steps"], ex["reach_error_mm"], color=["tab:green" if e < 0.1 else "tab:red" for e in ex["reach_error_mm"]])
     ax.set_yscale("log"); ax.axhline(0.1, color="k", ls="--", lw=0.8)
-    ax.set_xlabel("white keys from C4 (wrist rotation only)"); ax.set_ylabel("IK error [mm]")
-    ax.set_title("reach without carriage")
+    ax.set_xlabel("tasti bianchi da C4 (sola rotazione del polso)"); ax.set_ylabel("errore IK [mm]")
+    ax.set_title("raggiungibilità senza carrello")
     fig.tight_layout()
     return manager.save(fig, "task4_octave_jump", "tasks")
 
@@ -112,7 +113,7 @@ def plot_touch(scene, results, manager):
         axs[0].plot(r.t[:-1], ex["F_des"], "--", color=l.get_color(), lw=0.9)
         axs[1].plot(r.t[:-1], 1e3 * ex["z"], color=l.get_color(), label=ex["profile"].name)
     axs[1].axhline(0, color="k", lw=1); axs[1].axhline(-1e3 * scene.kb.press_depth, color="k", ls="--", lw=0.8)
-    axs[0].set_ylabel("contact force [N]"); axs[1].set_ylabel("fingertip height [mm]"); axs[1].set_xlabel("time [s]")
+    axs[0].set_ylabel("contact force [N]"); axs[1].set_ylabel("fingertip height [mm]"); axs[1].set_xlabel("tempo [s]")
     axs[0].legend(fontsize=8); axs[0].set_title("Task 5 - hybrid position/force touch (dashed: desired force)")
     fig.tight_layout()
     return manager.save(fig, "task5_touch", "tasks")

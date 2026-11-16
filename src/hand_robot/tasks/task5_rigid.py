@@ -99,7 +99,7 @@ def simulate_touch(scene: Scene, prof: TouchProfile, q_start, note, branch, base
     base = np.asarray(base, float)
     qa = q_start[model.idx].copy()
     qd = np.zeros(model.n)
-    keys = ["t", "q", "qd", "Fz", "z", "vz", "tau", "F_des", "z_ref", "mode", "sat"]
+    keys = ["t", "q", "qd", "Fz", "z", "vz", "tau", "F_des", "z_ref", "mode", "sat", "x", "y"]
     lg = {k: [] for k in keys}
 
     def contact(tip, v):
@@ -122,7 +122,7 @@ def simulate_touch(scene: Scene, prof: TouchProfile, q_start, note, branch, base
             for key, val in (("t", ts + dt_plant), ("q", qa.copy()), ("qd", qd.copy()), ("Fz", F[2]),
                              ("z", tp[2]), ("vz", vp[2]), ("tau", tau.copy()), ("F_des", ctrl.log["F_des"][-1]),
                              ("z_ref", ctrl.log["z_ref"][-1]), ("mode", ctrl.log["mode"][-1]),
-                             ("sat", ctrl.log["sat"][-1])):
+                             ("sat", ctrl.log["sat"][-1]), ("x", tp[0]), ("y", tp[1])):
                 lg[key].append(val)
         if not np.all(np.isfinite(qa)) or np.abs(qd).max() > 1e3:
             diverged = True
@@ -150,6 +150,10 @@ def run(scene: Scene, finger: str = "middle", profiles=None, gains: OpSpaceGains
                          [phases[m] for m in lg["mode"]])
         res.metrics = {"duration_s": duration,
                        **metrics_from_log(lg, prof, scene.kb, scene.q_min, scene.q_max, model.idx)}
+        xy_ref = scene.kb.surface_point(note, finger)[:2]
+        lat = np.hypot(lg["x"] - xy_ref[0], lg["y"] - xy_ref[1])
+        res.metrics["lateral_max_mm"] = 1e3 * float(lat.max())      # lateral error of the fingertip w.r.t. the key centre
+        res.metrics["lateral_rms_mm"] = 1e3 * float(np.sqrt(np.mean(lat ** 2)))
         res.extras.update(Fz=lg["Fz"], z=lg["z"], vz=lg["vz"], z_ref=lg["z_ref"], F_des=lg["F_des"],
                           mode=lg["mode"], tau=lg["tau"], qd=lg["qd"], profile=prof, finger=finger, note=note)
         out.append(res)

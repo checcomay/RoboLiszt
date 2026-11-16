@@ -216,8 +216,6 @@ bag_*/
 
 gazebo/urdf/*.urdf
 gazebo/worlds/piano.sdf
-gazebo/config/controllers.yaml
-gazebo/config/controllers_effort.yaml
 gazebo/meshes/*.obj
 
 ################################################
