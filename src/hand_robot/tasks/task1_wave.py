@@ -18,14 +18,20 @@ def open_palm(scene: Scene, wrist_pitch_deg: float = -55.0) -> np.ndarray:
             continue
         for j in br[1:]:
             q[j - 1] = -scene.robot.dh[j].theta_offset
-    return np.clip(q, scene.q_min, scene.q_max)
+
+    q_raw = q.copy()
+    q = np.clip(q, scene.q_min, scene.q_max)
+    if not np.isclose(q[1], q_raw[1]):
+        print(f"[task1] wrist pitch clipped: requested {wrist_pitch_deg:.1f} deg, "
+              f"got {np.rad2deg(q[1]):.1f} deg (limits {np.rad2deg(scene.q_min[1]):.1f}/{np.rad2deg(scene.q_max[1]):.1f})")
+    return q
 
 
-def run(scene: Scene, wave_amp_deg: float = 25.0, wave_freq_hz: float = 1.5, n_cycles: int = 3,
-        ripple_deg: float = 18.0, t_raise: float = 1.0, t_lower: float = 1.0) -> list[TaskResult]:
+def run(scene, wave_amp_deg=35.0, wave_freq_hz=1.0, n_cycles=3,
+        ripple_deg=0.0, wrist_pitch_deg=-65.0, t_raise=1.0, t_lower=1.0):
     dt = scene.dt
     q_ready = scene.ready_posture(DEFAULT_NOTES)
-    q_wave = open_palm(scene)
+    q_wave = open_palm(scene, wrist_pitch_deg)
     base = scene.base_home
 
     t_wave = n_cycles / wave_freq_hz
@@ -61,4 +67,11 @@ def run(scene: Scene, wave_amp_deg: float = 25.0, wave_freq_hz: float = 1.5, n_c
         "sigma_min_min": float(min(v["sigma_min"].min() for v in sm.values())),
     }
     res.extras["sigma_min_middle"] = sm[FINGERS["middle"]]["sigma_min"]
+
+    wave_idx = [i for i, p in enumerate(res.phase) if p == "wave"]
+    res.metrics.update({
+        "wrist_pitch_min_deg": float(np.rad2deg(res.q[:, 1].min())),
+        "wave_dev_ptp_deg": float(np.rad2deg(np.ptp(res.q[wave_idx, 0]))),
+        "wave_dev_clipped": bool(np.rad2deg(np.ptp(res.q[wave_idx, 0])) < 2 * wave_amp_deg - 1e-6),
+    })
     return [res]

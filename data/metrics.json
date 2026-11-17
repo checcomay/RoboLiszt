@@ -1,11 +1,14 @@
 {
   "task1_wave": {
-    "duration_s": 4.0,
-    "max_joint_speed_rad_s": 4.110813319058473,
+    "duration_s": 5.0,
+    "max_joint_speed_rad_s": 3.8375481652483487,
     "min_joint_margin_deg": 17.999999999999993,
-    "max_tip_height_mm": 221.77975379972537,
-    "middle_tip_lateral_sweep_mm": 127.91858309089899,
-    "sigma_min_min": 0.010573395511154363
+    "max_tip_height_mm": 235.60500196870143,
+    "middle_tip_lateral_sweep_mm": 111.70756429877294,
+    "sigma_min_min": 0.010573395511154342,
+    "wrist_pitch_min_deg": -65.0,
+    "wave_dev_ptp_deg": 70.0,
+    "wave_dev_clipped": false
   },
   "task2_press_thumb_C4": {
     "duration_s": 1.45,
