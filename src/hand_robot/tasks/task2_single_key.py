@@ -17,4 +17,5 @@ def run(scene: Scene, finger: str = "middle", notes: dict | None = None, timing:
     res.metrics = scene.common_metrics(res, (finger,), notes)
     res.metrics["wrist_deviation_deg"] = float(abs(qs[:, :2] - q0[:2]).max() * 180 / 3.141592653589793)
     res.extras.update(notes=notes, pressed=(finger,), q_ready=q0, target_tips=scene.last_target_tips)
+    res = scene.return_to_ready(res, q_ready=q0, duration=0.50)
     return [res]

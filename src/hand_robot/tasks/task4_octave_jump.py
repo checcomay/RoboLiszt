@@ -84,4 +84,5 @@ def run(scene: Scene, steps: int = 7, pressed: tuple[str, ...] = TRIAD) -> list[
     }
     res.extras.update(reach_steps=reach["steps"], reach_error_mm=reach["error_mm"], reach_wrist_deg=reach["wrist_deg"],
                       notes0=notes0, notes1=notes1, pressed=pressed, q_ready=q_ready)
+    res = scene.return_to_ready(res, q_ready=q_ready, base_ready=b0, duration=0.80)
     return [res]

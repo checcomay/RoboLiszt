@@ -20,4 +20,5 @@ def run(scene: Scene, pressed: tuple[str, ...] = TRIAD, notes: dict | None = Non
     res.metrics = scene.common_metrics(res, pressed, notes)
     res.metrics["wrist_deviation_deg"] = float(abs(qs[:, :2] - q0[:2]).max() * 57.29577951308232)
     res.extras.update(notes=notes, pressed=pressed, q_ready=q0, target_tips=scene.last_target_tips)
+    res = scene.return_to_ready(res, q_ready=q0, duration=0.50)
     return [res]

@@ -32,6 +32,8 @@ class Runner(Node):
         goal = FollowJointTrajectory.Goal()
         goal.trajectory.joint_names = JOINTS
         qd = np.gradient(np.hstack([q, base]), t, axis=0)
+        qd[0, :] = 0.0
+        qd[-1, :] = 0.0
         for k in idx:
             p = JointTrajectoryPoint()
             p.positions = [float(x) for x in np.r_[q[k], base[k]]]

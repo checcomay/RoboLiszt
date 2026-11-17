@@ -64,8 +64,8 @@ def generate_launch_description():
     return LaunchDescription([
         DeclareLaunchArgument("mode", default_value="position", description="position | effort"),
         DeclareLaunchArgument("touch", default_value="false", description="start task5_touch_node (effort mode)"),
-        DeclareLaunchArgument("sound", default_value="false", description="start piano_sound_node (note = key, loudness = key speed)"),
-        DeclareLaunchArgument("sound_backend", default_value="sounddevice", description="sounddevice | aplay | wav"),
+        DeclareLaunchArgument("sound", default_value="true", description="start piano_sound_node (note = key, loudness = key speed)"),
+        DeclareLaunchArgument("sound_backend", default_value="aplay", description="sounddevice | aplay | wav"),
         DeclareLaunchArgument("sound_out", default_value="piano_session.wav", description="output file of the wav backend"),
         DeclareLaunchArgument("finger", default_value="middle"),
         DeclareLaunchArgument("profile", default_value="pp"),

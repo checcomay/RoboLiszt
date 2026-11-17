@@ -126,7 +126,12 @@ def build_urdf(config: dict, effort: bool = False) -> str:
         _sub(inn, "mass", value=f"{rbd.mass[i]:.9g}")
         _sub(inn, "inertia", ixx=f"{I_L[0,0]:.9g}", iyy=f"{I_L[1,1]:.9g}", izz=f"{I_L[2,2]:.9g}",
              ixy=f"{I_L[0,1]:.9g}", ixz=f"{I_L[0,2]:.9g}", iyz=f"{I_L[1,2]:.9g}")
-        _mesh_visuals(l, meshes[f"link{i}"])                         # shells + hinge cylinders (visual only)
+        _mesh_visuals(l, meshes[f"link{i}"])  # Mesh visiva complessa
+        if i == 2:
+            col = _sub(l, "collision", name="palm_collision")
+            _sub(col, "origin", xyz="0.04 0.0 0.0", rpy="0 0 0")  # Centro geometrico approssimato
+            g = _sub(col, "geometry")
+            _sub(g, "box", size="0.08 0.09 0.03")  # Bounding box leggera per la fisica
         # --- joint
         j = _sub(root, "joint", name=f"j{i}", type="revolute")
         _sub(j, "parent", link=link_name[par]); _sub(j, "child", link=link_name[i])

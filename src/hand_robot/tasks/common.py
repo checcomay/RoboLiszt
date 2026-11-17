@@ -269,6 +269,37 @@ class Scene:
                 m["min_hover_clearance_mm"] = float(1e3 * tips[:, others, 2].min())
         return m
 
+    # ---------------------------------------------------------------- base
+    def return_to_ready(
+        self,
+        res: TaskResult,
+        q_ready: np.ndarray,
+        base_ready: np.ndarray | None = None,
+        duration: float = 0.60,
+    ) -> TaskResult:
+        """Appende in coda a un TaskResult un rientro quintico C^2 verso q_ready e base_ready,
+        garantendo posizione finale esatta e velocità/accelerazione finali nulle."""
+        b_target = self.base_home if base_ready is None else np.asarray(base_ready, float)
+        n_steps = max(2, int(round(duration / self.dt)))
+
+        alpha = np.array([tj.quintic(i / (n_steps - 1)) for i in range(n_steps)])
+        q_last = res.q[-1]
+        b_last = res.base[-1]
+
+        q_ret = q_last[None, :] + alpha[:, None] * (np.asarray(q_ready, float)[None, :] - q_last[None, :])
+        b_ret = b_last[None, :] + alpha[:, None] * (b_target[None, :] - b_last[None, :])
+
+        out = self.assemble(
+            res.name,
+            [
+                (res.phase, res.q, res.base),
+                ("home_return", q_ret, b_ret),
+            ],
+        )
+        out.metrics = dict(res.metrics)
+        out.extras = dict(res.extras)
+        return out
+
 
 def comfort_posture(scene: "Scene", wrist_pitch_deg: float = 10.0, flex_deg: float = -30.0) -> np.ndarray:
     """Relaxed hand: wrist slightly pitched down, fingers gently curved (used as null-space target)."""

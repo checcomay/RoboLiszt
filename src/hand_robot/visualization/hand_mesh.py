@@ -178,9 +178,20 @@ def build_hand_meshes(robot) -> dict[str, list[Part]]:
 
     # --- palm (link 2): rounded plate covering the knuckle row of the ready posture, thenar and hypothenar swellings
     ty, rp = -0.006, 0.0145
-    C = [[-0.004, ty, -0.036], [-0.004, ty, 0.030], [0.084, ty, -0.022], [0.060, ty, 0.045], [0.0, ty, -0.050], [0.030, ty, 0.040]]
+    # Centri delle sfere: Carpo radiale/ulnare, nocche esterne e rigonfiamenti tenar/ipotenar
+    C = [
+        [-0.004, ty, -0.036],  # Carpo ulnare
+        [-0.004, ty, 0.030],  # Carpo radiale
+        [0.084, ty, -0.022],  # Nocca mignolo
+        [0.060, ty, 0.045],  # Nocca indice
+        [0.0, ty, -0.050],  # Ipotenar
+        [0.030, ty, 0.040]  # Tenar
+    ]
+
+    # Genera la scocca come inviluppo convesso delle sfere
     palm = _part("link2_shell", "shell", hull_of_spheres(C, rp))
     wrist = _part("link2_joint", "graphite", cylinder([0, 0, 0], [0, 0, 1], 0.0125, 0.075, bevel=0.002))
+
     out["link2"] = [palm, wrist]
 
     # --- fingers and thumb
