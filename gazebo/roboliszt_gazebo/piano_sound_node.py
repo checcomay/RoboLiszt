@@ -8,6 +8,9 @@ hand_robot.audio.detector (note = key, intensity = key descent speed -> MIDI vel
 piano. Backends: `sounddevice` (pip install sounddevice, needs PortAudio), `aplay` (ALSA), `wav` (offline, exact timing
 even when Gazebo runs slower than real time: realtime backends sound at WALL-clock time, so with --rtf 0.25 the notes are
 spaced 4x farther apart than in simulation). Dynamics need joint states at >= 500 Hz (ros2_control update_rate).
+
+Added: presses during the first `warmup_s` seconds of simulated time (robot spawn, keys settling) and presses faster than
+`max_speed` m/s (numerical artefacts: a finger presses at <= 0.2 m/s) are ignored and reported as warnings.
 """
 import os
 import sys
@@ -34,6 +37,8 @@ class PianoSound(Node):
         self.declare_parameter("backend", "sounddevice")
         self.declare_parameter("out", "piano_session.wav")
         self.declare_parameter("key_topic", "/world/piano_world/model/piano/joint_state")
+        self.declare_parameter("warmup_s", 10.0)
+        self.declare_parameter("max_speed", 1.0)
         cfg = load_yaml(default_config_path())
         s = cfg["sound"]
         self.det = KeyPressDetector.from_config(cfg)
@@ -41,6 +46,9 @@ class PianoSound(Node):
         self.rel_t, self.gain = float(s["release_time"]), float(s["master_gain"])
         self.backend_name = self.get_parameter("backend").value
         self.out = self.get_parameter("out").value
+        self.warmup = float(self.get_parameter("warmup_s").value)
+        self.max_speed = float(self.get_parameter("max_speed").value)
+        self.t_first, self.muted = None, set()
         self.events, self.backend = [], None
         if self.backend_name != "wav":
             self.mixer = PolyMixer(self.synth, self.rel_t, self.gain)
@@ -55,11 +63,22 @@ class PianoSound(Node):
         t = msg.header.stamp.sec + 1e-9 * msg.header.stamp.nanosec
         if t == 0.0:
             t = self.get_clock().now().nanoseconds * 1e-9
+        if self.t_first is None:
+            self.t_first = t
+        warm = (t - self.t_first) < self.warmup
         for name, pos in zip(msg.name, msg.position):
             m = midi_from_joint(name)
             if m is None:
                 continue
             for e in self.det.update(t, m, pos):
+                if e.on and (warm or e.speed > self.max_speed):
+                    self.muted.add(m)
+                    why = "warm-up" if warm else f"key speed {e.speed:.2f} m/s > {self.max_speed:g}"
+                    self.get_logger().warn(f"ignored note {m} ({why})")
+                    continue
+                if not e.on and m in self.muted:
+                    self.muted.discard(m)
+                    continue
                 self.events.append(e)
                 if self.backend is not None:
                     (self.mixer.note_on(m, e.velocity) if e.on else self.mixer.note_off(m))
