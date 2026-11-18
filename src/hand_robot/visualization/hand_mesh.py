@@ -13,6 +13,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+
+from scipy.interpolate import splprep, splev
 from scipy.spatial import ConvexHull
 
 MATERIALS = {                      # rgba
@@ -121,6 +123,64 @@ def hull_of_spheres(centers, radii, n_pts=260, seed=0):
     return pts[used], remap[F]
 
 
+PALM_RADIAL_SIGN = -1.0
+PALM_PALMAR_SIGN = -1.0
+
+
+def _gauss(x, z, x0, z0, sx, sz):
+    return np.exp(-0.5 * (((x - x0) / sx) ** 2 + ((z - z0) / sz) ** 2))
+
+
+def palm_mesh(n_phi=64, n_t=34, q=3.0):
+    """Human-like palm: closed outline (wrist -> ulnar edge -> knuckle arch -> web -> thenar) inflated into a rounded
+    solid with variable thickness (thenar / hypothenar swellings, central hollow, convex dorsum).
+    Frame of link2: x along the hand, y thickness (palmar = -y), z lateral (radial = +z)."""
+    out = np.array([
+        [-0.016, -0.030], [0.014, -0.051], [0.045, -0.054], [0.0585, -0.045],
+        [0.064, -0.0375], [0.0785, -0.0206], [0.0905, 0.000], [0.0835, 0.0202],
+        [0.068, 0.037], [0.050, 0.046], [0.030, 0.056], [0.004, 0.048], [-0.016, 0.028]])
+    tck, _ = splprep([np.r_[out[:, 0], out[0, 0]], np.r_[out[:, 1], out[0, 1]]], s=0, per=True)
+    px, pz = splev(np.linspace(0, 1, n_phi, endpoint=False), tck)
+    c0 = np.array([0.040, -0.004])
+    yc = -0.0060
+
+    def hd(X, Z):                                 # dorso
+        return (0.0115 + 0.0025 * np.clip(1 - ((Z + 0.004) / 0.052) ** 2, 0, 1)
+                + 0.0040 * _gauss(X, Z, 0.016, 0.044, 0.020, 0.014))
+
+    def hp(X, Z):                                 # lato palmare
+        return (0.0125 + 0.0075 * _gauss(X, Z, 0.022, 0.040, 0.020, 0.016)
+                       + 0.0050 * _gauss(X, Z, 0.030, -0.043, 0.024, 0.011)
+                       - 0.0040 * _gauss(X, Z, 0.056, 0.000, 0.020, 0.020))
+
+    rings = []
+    for t in np.linspace(0, np.pi, n_t)[1:-1]:
+        u = np.cos(t)
+        r = (1 - abs(u) ** q) ** (1 / q)
+        X = c0[0] + r * (px - c0[0])
+        Z = c0[1] + r * (pz - c0[1])
+        h = hd(X, Z) if u >= 0 else hp(X, Z)
+        rings.append(np.c_[X, yc + u * h, Z])
+    top = np.array([c0[0], yc + hd(*c0), c0[1]])
+    bot = np.array([c0[0], yc - hp(*c0), c0[1]])
+    V = np.vstack([top[None]] + rings + [bot[None]])
+    V[:, 2] *= PALM_RADIAL_SIGN
+    if PALM_PALMAR_SIGN > 0:
+        V[:, 1] *= -1
+    nr, F = len(rings), []
+    ring = lambda i, j: 1 + i * n_phi + (j % n_phi)
+    for j in range(n_phi):
+        F.append([0, ring(0, j), ring(0, j + 1)])
+        F.append([len(V) - 1, ring(nr - 1, j + 1), ring(nr - 1, j)])
+        for i in range(nr - 1):
+            a, b, c, d = ring(i, j), ring(i, j + 1), ring(i + 1, j), ring(i + 1, j + 1)
+            F += [[a, c, b], [b, c, d]]
+    F = np.array(F)
+    if volume(V, F) < 0:                            # outward winding
+        F = F[:, ::-1]
+    return V, F
+
+
 def _part(name, material, VF) -> Part:
     V, F = VF
     return Part(name, material, np.asarray(V, float), np.asarray(F, int), vertex_normals(V, F))
@@ -176,20 +236,7 @@ def build_hand_meshes(robot) -> dict[str, list[Part]]:
     out["base_link"] = [fore, ring]
     out["link1"] = [_part("link1_shell", "shell", tapered_capsule([0, 0, 0], seg_of(1), 0.0285, 0.0285, n_around=36, n_cap=6))]
 
-    # --- palm (link 2): rounded plate covering the knuckle row of the ready posture, thenar and hypothenar swellings
-    ty, rp = -0.006, 0.0145
-    # Centri delle sfere: Carpo radiale/ulnare, nocche esterne e rigonfiamenti tenar/ipotenar
-    C = [
-        [-0.004, ty, -0.036],  # Carpo ulnare
-        [-0.004, ty, 0.030],  # Carpo radiale
-        [0.084, ty, -0.022],  # Nocca mignolo
-        [0.060, ty, 0.045],  # Nocca indice
-        [0.0, ty, -0.050],  # Ipotenar
-        [0.030, ty, 0.040]  # Tenar
-    ]
-
-    # Genera la scocca come inviluppo convesso delle sfere
-    palm = _part("link2_shell", "shell", hull_of_spheres(C, rp))
+    palm = _part("link2_shell", "shell", palm_mesh())
     wrist = _part("link2_joint", "graphite", cylinder([0, 0, 0], [0, 0, 1], 0.0125, 0.075, bevel=0.002))
 
     out["link2"] = [palm, wrist]

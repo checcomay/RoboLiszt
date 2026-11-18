@@ -73,5 +73,7 @@ def run(scene, wave_amp_deg=35.0, wave_freq_hz=1.0, n_cycles=3,
         "wrist_pitch_min_deg": float(np.rad2deg(res.q[:, 1].min())),
         "wave_dev_ptp_deg": float(np.rad2deg(np.ptp(res.q[wave_idx, 0]))),
         "wave_dev_clipped": bool(np.rad2deg(np.ptp(res.q[wave_idx, 0])) < 2 * wave_amp_deg - 1e-6),
+        "return_error_deg": float(np.rad2deg(np.abs(res.q[-1] - res.q[0]).max())),
+        "return_base_error_mm": float(1e3 * np.abs(res.base[-1] - res.base[0]).max()),
     })
     return [res]
