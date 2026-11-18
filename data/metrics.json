@@ -8,52 +8,59 @@
     "sigma_min_min": 0.010573395511154342,
     "wrist_pitch_min_deg": -65.0,
     "wave_dev_ptp_deg": 70.0,
-    "wave_dev_clipped": false
+    "wave_dev_clipped": false,
+    "return_error_deg": 6.3611093629270335e-15,
+    "return_base_error_mm": 0.0
   },
   "task2_press_thumb_C4": {
-    "duration_s": 1.45,
+    "duration_s": 1.945,
     "max_joint_speed_rad_s": 2.347802482872674,
     "min_joint_margin_deg": 41.79567725131875,
     "sigma_min_min": 0.03512503320530028,
     "press_error_mm": 0.06866286430068588,
     "min_hover_clearance_mm": 16.703783421798416,
-    "wrist_deviation_deg": 1.5424021082312604
+    "wrist_deviation_deg": 1.5424021082312604,
+    "pre_return_gap_deg": 0.052546552149286684
   },
   "task2_press_index_D4": {
-    "duration_s": 1.45,
+    "duration_s": 1.945,
     "max_joint_speed_rad_s": 5.600907294424606,
     "min_joint_margin_deg": 35.55389038563306,
     "sigma_min_min": 0.058463722589918346,
     "press_error_mm": 0.0703075977098365,
     "min_hover_clearance_mm": 7.902399676493227,
-    "wrist_deviation_deg": 13.580736385920401
+    "wrist_deviation_deg": 13.580736385920403,
+    "pre_return_gap_deg": 0.07278983146346052
   },
   "task2_press_middle_E4": {
-    "duration_s": 1.45,
+    "duration_s": 1.945,
     "max_joint_speed_rad_s": 3.82875066432089,
     "min_joint_margin_deg": 42.840136161129564,
     "sigma_min_min": 0.06835160740124016,
     "press_error_mm": 0.06768870686711198,
     "min_hover_clearance_mm": 7.911329992300153,
-    "wrist_deviation_deg": 11.7036094077782
+    "wrist_deviation_deg": 11.703609407778199,
+    "pre_return_gap_deg": 0.08342790292156445
   },
   "task2_press_ring_F4": {
-    "duration_s": 1.45,
+    "duration_s": 1.945,
     "max_joint_speed_rad_s": 5.9942383342270755,
     "min_joint_margin_deg": 32.99175927518122,
     "sigma_min_min": 0.053064827386161306,
     "press_error_mm": 0.07220459603819371,
     "min_hover_clearance_mm": 7.9025899250737135,
-    "wrist_deviation_deg": 14.39229986882676
+    "wrist_deviation_deg": 14.39229986882676,
+    "pre_return_gap_deg": 0.07720134422175402
   },
   "task2_press_little_G4": {
-    "duration_s": 1.45,
+    "duration_s": 1.945,
     "max_joint_speed_rad_s": 8.07529657773406,
     "min_joint_margin_deg": 38.97903906354177,
     "sigma_min_min": 0.05367096341602717,
     "press_error_mm": 0.08023825799213756,
     "min_hover_clearance_mm": 7.902536932945833,
-    "wrist_deviation_deg": 15.966872645051431
+    "wrist_deviation_deg": 15.966872645051431,
+    "pre_return_gap_deg": 0.15370757622407036
   },
   "task3_chord_C4E4G4": {
     "duration_s": 1.45,
