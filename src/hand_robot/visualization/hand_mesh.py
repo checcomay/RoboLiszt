@@ -5,7 +5,8 @@ seg = [a, 0, d] in L_i, from the joint i axis to the joint i+1 axis). Output: ``
 {link_name: [Part(name, material, V, F, N)]}; ``write_obj`` writes Wavefront OBJ with smooth vertex normals.
 
 Look: robot-style hand (Shadow-Hand-like): off-white shells, graphite hinge cylinders on every joint axis, dark silicone
-pads on the palmar face of the fingertips, rounded palm, wrist cuff and a short forearm on the carriage.
+pads on the palmar face of the fingertips, human-like palm (narrow at the wrist, widening towards the knuckle arch, thenar and
+hypothenar swellings), wrist cuff and a short forearm on the carriage.
 These meshes are VISUAL ONLY. Collisions stay on the fingertips (sphere), inertias come from the rigid-body model.
 """
 from __future__ import annotations
@@ -13,7 +14,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
-
 from scipy.interpolate import splprep, splev
 from scipy.spatial import ConvexHull
 
@@ -25,6 +25,13 @@ MATERIALS = {                      # rgba
 
 TIP_RADIUS = 0.0055                # = piano.tip_collision_radius (the collision sphere has the same size)
 FINGER_SCALE = {"finger_1": 0.90, "finger_2": 1.00, "finger_3": 1.05, "finger_4": 1.00, "finger_5": 1.18}
+FINGER_THICKNESS = 0.82            # visual slimming of the four fingers (the key pitch is 23.5 mm: thick fingers look glued together)
+HINGE_LEN = 1.9                    # hinge cylinder length / finger radius (< 2: the hinge never sticks out sideways)
+
+# Palm frame (link2): x along the hand, y = palm normal (palmar = -y), z lateral. From the DH/URDF convention of
+# gazebo/generate.py the thumb root is at z = -44 mm and the little-finger knuckle at z = +37 mm (flip the signs if mirrored).
+PALM_RADIAL_SIGN = -1.0
+PALM_PALMAR_SIGN = -1.0
 
 
 @dataclass
@@ -123,64 +130,6 @@ def hull_of_spheres(centers, radii, n_pts=260, seed=0):
     return pts[used], remap[F]
 
 
-PALM_RADIAL_SIGN = -1.0
-PALM_PALMAR_SIGN = -1.0
-
-
-def _gauss(x, z, x0, z0, sx, sz):
-    return np.exp(-0.5 * (((x - x0) / sx) ** 2 + ((z - z0) / sz) ** 2))
-
-
-def palm_mesh(n_phi=64, n_t=34, q=3.0):
-    """Human-like palm: closed outline (wrist -> ulnar edge -> knuckle arch -> web -> thenar) inflated into a rounded
-    solid with variable thickness (thenar / hypothenar swellings, central hollow, convex dorsum).
-    Frame of link2: x along the hand, y thickness (palmar = -y), z lateral (radial = +z)."""
-    out = np.array([
-        [-0.016, -0.030], [0.014, -0.051], [0.045, -0.054], [0.0585, -0.045],
-        [0.064, -0.0375], [0.0785, -0.0206], [0.0905, 0.000], [0.0835, 0.0202],
-        [0.068, 0.037], [0.050, 0.046], [0.030, 0.056], [0.004, 0.048], [-0.016, 0.028]])
-    tck, _ = splprep([np.r_[out[:, 0], out[0, 0]], np.r_[out[:, 1], out[0, 1]]], s=0, per=True)
-    px, pz = splev(np.linspace(0, 1, n_phi, endpoint=False), tck)
-    c0 = np.array([0.040, -0.004])
-    yc = -0.0060
-
-    def hd(X, Z):                                 # dorso
-        return (0.0115 + 0.0025 * np.clip(1 - ((Z + 0.004) / 0.052) ** 2, 0, 1)
-                + 0.0040 * _gauss(X, Z, 0.016, 0.044, 0.020, 0.014))
-
-    def hp(X, Z):                                 # lato palmare
-        return (0.0125 + 0.0075 * _gauss(X, Z, 0.022, 0.040, 0.020, 0.016)
-                       + 0.0050 * _gauss(X, Z, 0.030, -0.043, 0.024, 0.011)
-                       - 0.0040 * _gauss(X, Z, 0.056, 0.000, 0.020, 0.020))
-
-    rings = []
-    for t in np.linspace(0, np.pi, n_t)[1:-1]:
-        u = np.cos(t)
-        r = (1 - abs(u) ** q) ** (1 / q)
-        X = c0[0] + r * (px - c0[0])
-        Z = c0[1] + r * (pz - c0[1])
-        h = hd(X, Z) if u >= 0 else hp(X, Z)
-        rings.append(np.c_[X, yc + u * h, Z])
-    top = np.array([c0[0], yc + hd(*c0), c0[1]])
-    bot = np.array([c0[0], yc - hp(*c0), c0[1]])
-    V = np.vstack([top[None]] + rings + [bot[None]])
-    V[:, 2] *= PALM_RADIAL_SIGN
-    if PALM_PALMAR_SIGN > 0:
-        V[:, 1] *= -1
-    nr, F = len(rings), []
-    ring = lambda i, j: 1 + i * n_phi + (j % n_phi)
-    for j in range(n_phi):
-        F.append([0, ring(0, j), ring(0, j + 1)])
-        F.append([len(V) - 1, ring(nr - 1, j + 1), ring(nr - 1, j)])
-        for i in range(nr - 1):
-            a, b, c, d = ring(i, j), ring(i, j + 1), ring(i + 1, j), ring(i + 1, j + 1)
-            F += [[a, c, b], [b, c, d]]
-    F = np.array(F)
-    if volume(V, F) < 0:                            # outward winding
-        F = F[:, ::-1]
-    return V, F
-
-
 def _part(name, material, VF) -> Part:
     V, F = VF
     return Part(name, material, np.asarray(V, float), np.asarray(F, int), vertex_normals(V, F))
@@ -211,6 +160,65 @@ def volume(V, F) -> float:
     return float(np.einsum("ij,ij->i", V[F[:, 0]], np.cross(V[F[:, 1]], V[F[:, 2]])).sum() / 6.0)
 
 
+# --------------------------------------------------------------------------------------------- the palm
+def _gauss(x, z, x0, z0, sx, sz):
+    return np.exp(-0.5 * (((x - x0) / sx) ** 2 + ((z - z0) / sz) ** 2))
+
+
+# closed outline (x, z) in "design" coordinates (radial = +z): narrow wrist -> widening ulnar edge (hypothenar) -> arch through the
+# knuckle row (little, ring, middle, index; 4-5 mm inside the MCP joints) -> web -> thenar -> wrist
+PALM_OUTLINE = np.array([
+    [-0.024, -0.024], [-0.007, -0.030], [0.012, -0.040], [0.034, -0.046], [0.052, -0.047], [0.061, -0.042],
+    [0.0635, -0.0345], [0.077, -0.0206], [0.090, 0.000], [0.083, 0.0202], [0.072, 0.031], [0.058, 0.038],
+    [0.040, 0.044], [0.022, 0.048], [0.003, 0.043], [-0.014, 0.034], [-0.025, 0.024]])
+
+
+def palm_mesh(n_phi=72, n_t=36, q=3.2):
+    """Human-like palm: closed outline inflated into a rounded solid of variable thickness.
+    Frame of link2: x along the hand, y thickness (palmar = -y), z lateral (radial = PALM_RADIAL_SIGN * z)."""
+    out = PALM_OUTLINE
+    tck, _ = splprep([np.r_[out[:, 0], out[0, 0]], np.r_[out[:, 1], out[0, 1]]], s=0, per=True)
+    px, pz = splev(np.linspace(0, 1, n_phi, endpoint=False), tck)
+    c0 = np.array([0.040, 0.000])
+    yc = -0.0055
+
+    def hd(X, Z):                                   # dorsal half-thickness: gently convex back of the hand
+        return (0.0092 + 0.0022 * np.clip(1 - ((Z - 0.004) / 0.050) ** 2, 0, 1)
+                + 0.0035 * _gauss(X, Z, 0.012, 0.044, 0.018, 0.012))        # swelling over the thumb root
+
+    def hp(X, Z):                                   # palmar half-thickness: swellings and central hollow
+        return (0.0100 + 0.0075 * _gauss(X, Z, 0.018, 0.034, 0.018, 0.015)      # thenar eminence
+                       + 0.0042 * _gauss(X, Z, 0.032, -0.036, 0.022, 0.011)     # hypothenar eminence
+                       - 0.0030 * _gauss(X, Z, 0.052, 0.000, 0.018, 0.016))     # palm hollow
+
+    rings = []
+    for t in np.linspace(0, np.pi, n_t)[1:-1]:
+        u = np.cos(t)
+        r = (1 - abs(u) ** q) ** (1 / q)
+        X = c0[0] + r * (px - c0[0])
+        Z = c0[1] + r * (pz - c0[1])
+        h = hd(X, Z) if u >= 0 else hp(X, Z)
+        rings.append(np.c_[X, yc + u * h, Z])
+    top = np.array([c0[0], yc + hd(*c0), c0[1]])
+    bot = np.array([c0[0], yc - hp(*c0), c0[1]])
+    V = np.vstack([top[None]] + rings + [bot[None]])
+    V[:, 2] *= PALM_RADIAL_SIGN
+    if PALM_PALMAR_SIGN > 0:
+        V[:, 1] *= -1
+    nr, F = len(rings), []
+    ring = lambda i, j: 1 + i * n_phi + (j % n_phi)
+    for j in range(n_phi):
+        F.append([0, ring(0, j), ring(0, j + 1)])
+        F.append([len(V) - 1, ring(nr - 1, j + 1), ring(nr - 1, j)])
+        for i in range(nr - 1):
+            a, b, c, d = ring(i, j), ring(i, j + 1), ring(i + 1, j), ring(i + 1, j + 1)
+            F += [[a, c, b], [b, c, d]]
+    F = np.array(F)
+    if volume(V, F) < 0:                            # outward winding
+        F = F[:, ::-1]
+    return V, F
+
+
 # --------------------------------------------------------------------------------------------- the hand
 def _finger_link_parts(i, seg, rs, re, scale):
     """Shell capsule along seg plus graphite hinge cylinder on the joint axis (z) at the link origin."""
@@ -219,7 +227,7 @@ def _finger_link_parts(i, seg, rs, re, scale):
     if L > 1e-6:
         parts.append(_part(f"link{i}_shell", "shell", tapered_capsule([0, 0, 0], seg, rs, re)))
     parts.append(_part(f"link{i}_joint", "graphite",
-                       cylinder([0, 0, 0], [0, 0, 1], rs * 1.08, 2 * rs * 1.12, bevel=0.0012)))
+                       cylinder([0, 0, 0], [0, 0, 1], rs * 1.08, HINGE_LEN * rs, bevel=0.0012)))
     return parts
 
 
@@ -236,28 +244,29 @@ def build_hand_meshes(robot) -> dict[str, list[Part]]:
     out["base_link"] = [fore, ring]
     out["link1"] = [_part("link1_shell", "shell", tapered_capsule([0, 0, 0], seg_of(1), 0.0285, 0.0285, n_around=36, n_cap=6))]
 
+    # --- palm (link 2) and wrist hinge
     palm = _part("link2_shell", "shell", palm_mesh())
     wrist = _part("link2_joint", "graphite", cylinder([0, 0, 0], [0, 0, 1], 0.0125, 0.075, bevel=0.002))
-
     out["link2"] = [palm, wrist]
 
     # --- fingers and thumb
+    th = FINGER_THICKNESS
     for b, br in robot.branches.items():
         s = FINGER_SCALE[b]
         if b != "finger_5":
             bar, rest = br[0], br[1:]
-            Lb = np.linalg.norm(seg_of(bar))
-            out[f"link{bar}"] = [_part(f"link{bar}_shell", "shell", tapered_capsule([0, 0, 0], seg_of(bar), 0.0060 * s, 0.0078 * s)),
-                                 _part(f"link{bar}_joint", "graphite", cylinder([0, 0, 0], [0, 0, 1], 0.0075 * s, 0.014 * s, bevel=0.001))]
+            out[f"link{bar}"] = [_part(f"link{bar}_shell", "shell", tapered_capsule([0, 0, 0], seg_of(bar), 0.0060 * s * th, 0.0078 * s * th)),
+                                 _part(f"link{bar}_joint", "graphite", cylinder([0, 0, 0], [0, 0, 1], 0.0075 * s * th, 0.0090 * s * th, bevel=0.001))]
             ph = [j for j in rest if np.linalg.norm(seg_of(j)) > 1e-6]
-            radii = np.linspace(0.0072 * s, 0.0062, len(ph) + 1)
+            r_top, r_end = 0.0072 * s * th, max(0.0062 * th, TIP_RADIUS * 1.05)
+            radii = np.linspace(r_top, r_end, len(ph) + 1)
             k = 0
             for j in rest:
                 if np.linalg.norm(seg_of(j)) > 1e-6:
                     out[f"link{j}"] = _finger_link_parts(j, seg_of(j), radii[k], radii[k + 1], s)
                     k += 1
                 else:                                                  # zero-length hub at the MCP
-                    out[f"link{j}"] = _finger_link_parts(j, seg_of(j), 0.0072 * s, 0.0072 * s, s)
+                    out[f"link{j}"] = _finger_link_parts(j, seg_of(j), r_top, r_top, s)
             tip_r0 = radii[-1]
         else:                                                          # thumb: 16 thenar bar, 17/18 hubs, 19, 20 phalanges
             out["link16"] = [_part("link16_shell", "shell", tapered_capsule([0, 0, 0], seg_of(16), 0.0105, 0.0098)),
